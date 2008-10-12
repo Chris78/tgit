@@ -1,0 +1,28 @@
+#tag_cloud{:style=>'float:right;width:250px;'}
+  - tag_cloud @tags, %w(css1 css2 css3 css4) do |tag, css_class|
+    = link_to tag.name, params.merge(:tagged_with=>"#{params[:tagged_with].blank? ? '' : params[:tagged_with]+','}#{tag.name}"), :class=>css_class
+
+- form_tag '/files', :method=>:get do
+  %label== match all?
+  = check_box_tag :match_all, 1, @match_all
+  %br
+  %label== Schlagworte:
+  = text_field_tag 'tagged_with', params[:tagged_with]
+  %br
+  = submit_tag 'suchen'
+
+%h3== Suchergebnis für Schlagworte:
+- current_tags=(params[:tagged_with]||'').split(',').map{|t| t.strip}
+- remove_links=[]
+- current_tags.each do |t|
+  - remove_links << link_to(t, params.merge(:tagged_with=>(current_tags-[t]).join(',')), :style=>'color:red;font-weight:bold;font-size:1.5em;')
+= remove_links.join('&nbsp;&bull;&nbsp;')
+%br
+%hr
+
+- @fileinfos.each do |f|
+  = render :partial=>'shared/file_location', :object=>f.file_locations.first
+  = render :partial=>'shared/tags', :locals=>{:obj=>f}
+  %hr
+%br
+= will_paginate @fileinfos

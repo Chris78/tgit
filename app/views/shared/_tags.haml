@@ -1,0 +1,11 @@
+%div{:id=>"tags_for_#{obj.class.to_s}_#{obj.id}"}
+  - links=[]
+  - obj.tags.each do |t|
+    - dom_id="a_remove_#{obj.class.to_s}_#{obj.id}_#{t.id}"
+    - links << link_to_remote(" &bull; [X] #{t.name}", {:url=>{:controller=>"tagging", :action=>"delete", :taggable_type=>obj.class.to_s, :taggable_id=>obj.id, :tag_id=>t.id}, :success=>"$('#{dom_id}').remove();"}, {:class=>'red', :id=>dom_id})
+  %small
+    = links.join
+  %br
+  Tags hinzufügen:
+  - form_remote_tag :url=>{:controller=>:tagging, :action=>:add, :taggable_type=>obj.class.to_s, :taggable_id=>obj.id} do
+    = text_field_tag 'tag_names'

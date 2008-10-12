@@ -1,0 +1,17 @@
+- l=file_location
+%div
+  = link_to_function 'Location-Details', "$(this).next('div').removeClassName('hidden');$(this).remove();"
+  %br
+  %div.hidden
+    == #{l.class.to_s} #{l.filename}
+    %br
+    %small
+    == #{File.join(l.path,l.filename)}
+    %br
+    - if l.location
+      == #{l.location.type} #{l.location.name} #{l.location.located}
+      %br
+      %small
+        = l.location.description
+      %br
+  %img{:height=>380, :src=>"/files/get?path="+CGI.escape(File.join(l.path,l.filename))}

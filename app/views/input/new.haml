@@ -1,0 +1,16 @@
+.message{:style=>'font-weight:bold; font-size:2em;margin-bottom:10px;'}
+  = params[:message]
+- form_tag '/input', :method=>:post, :onsubmit=>"return confirm('Sind sie sicher? Stimmt die Location?');" do
+  %label== Location auswählen:
+  = select_tag 'location_id', options_for_select(@locations.reject{|x| x.location.nil?}.map{|x| [x.full_name,x.id]}, params[:location_id].to_i)
+  %br
+  %label== Dateien aus folgendem Pfad hinzufügen:
+  = text_field_tag 'path'
+  %br
+  %label== Unterverzeichnisse einschließen?
+  = check_box_tag 'include_subdirs', 1, params[:include_subdirs]
+  %br
+  %label== Schlagworte (optional)
+  = text_field_tag 'tag_list'
+  %br
+  = submit_tag 'Dateien suchen und in DB eintragen'

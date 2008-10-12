@@ -1,0 +1,5 @@
+%div{:style=>"border:solid 1px black;margin:4px;padding:4px;"}
+  = render :partial=>'location_inner', :locals=>{:location=>location}
+  - if location.location
+    %div{:style=>"left:50px;border:dotted 1px black;margin:4px;padding:4px;"}
+      = render :partial=>'location_inner', :locals=>{:location=>location.location}
