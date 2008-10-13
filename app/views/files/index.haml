@@ -21,7 +21,8 @@
 %hr
 
 - @fileinfos.each do |f|
-  = render :partial=>'shared/file_location', :object=>f.file_locations.first
+  - f.file_locations.each do |fl|
+    = render :partial=>'shared/file_location', :object=>fl
   = render :partial=>'shared/tags', :locals=>{:obj=>f}
   %hr
 %br
