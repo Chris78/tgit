@@ -1,5 +1,5 @@
 class Location<ActiveRecord::Base
-  belongs_to :file_location
+  has_many :file_locations, :dependent=>:destroy
 
   def full_name
     s=self.name

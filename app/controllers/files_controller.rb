@@ -3,7 +3,7 @@ class FilesController < ApplicationController
     if File.exists?(params[:path])
       send_file(params[:path], :disposition=>'inline', :content_type=>'image') and return false
     else
-      send_file('public/images/unavailable.gif',:disposition=>'inline', :content_type=>'image/gif') and return false
+      send_file('public/images/no_disk.gif',:disposition=>'inline', :content_type=>'image/gif') and return false
     end
   end
 
@@ -19,6 +19,7 @@ class FilesController < ApplicationController
     @fileinfos=@fileinfos.paginate(:per_page=>5, :page=>params[:page])
     @tags=Fileinfo.tag_counts(:conditions=>"tags.name in ('#{deeper_tags.join("','")}')")
     @tags=Fileinfo.tag_counts if @tags.blank?
+    @tags.sort!{|t1,t2| t1.name<=>t2.name}
   end
 
 end
