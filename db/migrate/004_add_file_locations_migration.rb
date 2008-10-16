@@ -1,7 +1,7 @@
 # Associate physical file locations with the unique fileinfo object, which has_many tags.
 class AddFileLocationsMigration < ActiveRecord::Migration
   def self.up
-    create_table :file_locations do |t|
+    create_table :file_locations, :options=>'default charset=utf8' do |t|
       t.column :fileinfo_id, :integer
       t.column :location_id, :integer
       t.column :path, :string, :limit=>1024
