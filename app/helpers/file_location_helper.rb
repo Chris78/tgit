@@ -1,2 +1,2 @@
-module FileLocationHelper
+module FileLocationsHelper
 end

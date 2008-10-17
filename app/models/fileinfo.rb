@@ -29,6 +29,6 @@ class Fileinfo<ActiveRecord::Base
     end
     filename=Iconv.iconv('utf-8','iso-8859-1',filename).first
     path=Iconv.iconv('utf-8','iso-8859-1',path).first
-    FileLocation.find_or_create_by_fileinfo_id_and_location_type_and_location_id_and_path_and_filename(inf.id,location.class.to_s,location.id,path,filename) if inf
+    FileLocation.find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(inf.id,location.id,path,filename) if inf
   end
 end

@@ -1,7 +1,7 @@
-- border = (location.file_locations_count>0 ? 'solid 3px black' : 'solid 1px gray')
+- border = (location.file_locations.length>0 ? 'solid 3px black' : 'solid 1px gray')
 %div{:id=>"location_#{location.id}", :style=>"border:#{border};margin:4px;padding:4px;"}
   .right
-    = link_to_remote('[X]', {:url=>{:controller=>'location', :action=>'delete', :id=>location.id}, :confirm=>"Diese Location unwiderruflich löschen?", :success=>"$('location_#{location.id}').remove();"}, {:class=>'red'})
+    = link_to_remote('[X]', {:url=>{:controller=>'locations', :action=>'delete', :id=>location.id}, :confirm=>"Diese Location unwiderruflich löschen?", :success=>"$('location_#{location.id}').remove();"}, {:class=>'red'})
   .clear
   = render :partial=>'location_inner', :locals=>{:location=>location}
   - if location.location

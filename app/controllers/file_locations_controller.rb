@@ -1,4 +1,4 @@
-class FileLocationController < ApplicationController
+class FileLocationsController < ApplicationController
   def new
   end
   def delete

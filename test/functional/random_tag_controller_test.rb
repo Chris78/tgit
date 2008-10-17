@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../test_helper'
-require 'random_tag_controller'
+require 'random_tags_controller'
 
 # Re-raise errors caught by the controller.
 class RandomTagController; def rescue_action(e) raise e end; end

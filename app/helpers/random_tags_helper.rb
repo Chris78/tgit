@@ -1,0 +1,2 @@
+module RandomTagsHelper
+end

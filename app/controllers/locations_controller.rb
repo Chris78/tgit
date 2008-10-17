@@ -1,4 +1,4 @@
-class LocationController < ApplicationController
+class LocationsController < ApplicationController
   def index
     @locations=Location.find(:all)
   end

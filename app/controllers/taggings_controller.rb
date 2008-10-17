@@ -1,4 +1,4 @@
-class TaggingController < ApplicationController
+class TaggingsController < ApplicationController
   def delete
     obj=params[:taggable_type].constantize.find(params[:taggable_id])
     tags=obj.tags.reject{|t| t.id==params[:tag_id].to_i}

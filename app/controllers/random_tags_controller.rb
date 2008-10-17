@@ -1,10 +1,11 @@
-class RandomTagController < ApplicationController
+class RandomTagsController < ApplicationController
 
   def show
     if params[:id]
       @fileinfo=Fileinfo.find(params[:id])
     else
       mx,r=Fileinfo.count,0
+      return if mx==0
       while r==0 or r==mx do
         r=(rand*mx).round
       end

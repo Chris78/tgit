@@ -4,7 +4,7 @@
   %br
   %div.hidden{:style=>'border:dotted 1px black; margin:3px; padding:3px;'}
     .right
-      = link_to_remote('[X]', {:url=>{:controller=>'file_location', :action=>'delete', :id=>l.id}, :confirm=>'Diese File-Location wirklich löschen?', :success=>"$('file_location_#{l.id}').remove();"}, {:class=>'red'})
+      = link_to_remote('[X]', {:url=>{:controller=>'file_locations', :action=>'delete', :id=>l.id}, :confirm=>'Diese File-Location wirklich löschen?', :success=>"$('file_location_#{l.id}').remove();"}, {:class=>'red'})
     .clear
     == #{l.class.to_s} #{l.filename}
     %br

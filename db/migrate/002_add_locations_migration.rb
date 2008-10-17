@@ -1,6 +1,6 @@
 class AddLocationsMigration < ActiveRecord::Migration
   def self.up
-    create_table :locations, :options=>'default charset=utf8' do |t|
+    create_table :locations do |t|
       t.column :type, :string, :limit=>32
       t.column :name, :string, :limit=>64
       t.column :description, :string, :limit=>256

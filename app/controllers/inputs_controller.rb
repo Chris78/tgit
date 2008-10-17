@@ -1,4 +1,4 @@
-class InputController < ApplicationController
+class InputsController < ApplicationController
   def new
     @locations=Location.find(:all)
   end

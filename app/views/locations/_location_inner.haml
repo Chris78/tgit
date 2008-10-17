@@ -1,7 +1,7 @@
 %i
   = location.type.to_s+':'
 %b= location.name
-== (#{location.file_locations_count} associated Files)
+== (#{location.file_locations.length} associated Files)
 %br
 %small
   = location.description

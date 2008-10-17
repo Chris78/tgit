@@ -1,0 +1,18 @@
+- if @fileinfo
+  == ID: #{@fileinfo.id}
+  == Sha2: #{@fileinfo.sha2}
+  == Größe: #{@fileinfo.filesize}
+
+  %hr
+
+  %h2 Locations
+  - @fileinfo.file_locations.each do |l|
+    = render :partial=>'shared/file_location', :object=>l
+
+  %form{:action=>"/random_tags/update/#{@fileinfo.id}", :params=>params, :method=>:post}
+    = text_field :fileinfo, :tag_list, :size=>100
+    = submit_tag 'speichern'
+    = link_to 'weiter', :action=>:show, :params=>params
+
+- else
+  %h1== Keine Files zum taggen gefunden.
