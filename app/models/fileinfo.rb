@@ -4,16 +4,27 @@ class Fileinfo<ActiveRecord::Base
   has_many :locations, :through=>:file_locations
 
   def self.add_path(location,path,opts={})
-    d=Dir.open(path)
-    while d2=d.read
-      next if d2=='.' || d2=='..'
-      if File.directory?(File.join(d.path,d2))
-        Fileinfo.add_path(location,File.join(d.path,d2),opts) if opts[:include_subdirs]
-      else
-        if File.file?(File.join(d.path,d2))
-          Fileinfo.add_file(location,d.path,d2,opts)
+    if File.file?(path)
+      pcs=path.split(/\\/)
+      filename=pcs.pop
+      path=pcs.join('\\')
+      Fileinfo.add_file(location,path,filename,opts)
+      return true
+    elsif File.directory?(path)
+      d=Dir.open(path)
+      while d2=d.read
+        next if d2=='.' || d2=='..'
+        if File.directory?(File.join(d.path,d2))
+          Fileinfo.add_path(location,File.join(d.path,d2),opts) if opts[:include_subdirs]
+        else
+          if File.file?(File.join(d.path,d2))
+            Fileinfo.add_file(location,d.path,d2,opts)
+          end
         end
       end
+      return true
+    else
+      return false
     end
   end
 

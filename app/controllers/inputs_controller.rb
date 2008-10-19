@@ -4,7 +4,7 @@ class InputsController < ApplicationController
   end
   def create
     path_utf8,path_iso = params[:path],Iconv.iconv('iso-8859-1','utf-8',params[:path]).first
-    if !File.directory?(path_iso)
+    if !(File.directory?(path_iso) || File.file?(path_iso))
       redirect_to :action=>'new', :location_id=>params[:location_id], :message=>"Der angegebene Pfad ist nicht erreichbar!"
     else
       loc=Location.find(params[:location_id])

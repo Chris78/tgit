@@ -4,6 +4,14 @@ class RandomTagsController < ApplicationController
     if params[:id]
       @fileinfo=Fileinfo.find(params[:id])
     else
+      if params[:only_untagged]
+        untagged=Fileinfo.find(:all, :select=>"fileinfos.*,count(tgg.id) as anz", :joins=>"left join taggings tgg on tgg.taggable_type='Fileinfo' AND tgg.taggable_id=fileinfos.id", :group=>'fileinfos.id having anz=0')
+        if untagged.length>0
+          r=(rand*untagged.length-1).round
+          return @fileinfo=untagged[r]
+        end
+      end
+      
       mx,r=Fileinfo.count,0
       return if mx==0
       while r==0 or r==mx do

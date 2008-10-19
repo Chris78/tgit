@@ -1,0 +1,21 @@
+- form_tag '/locations/create', :method=>:post do
+  %label== Location-Type:
+  = select_tag 'location[type]', options_for_select({'Computer'=>'Computer','Festplattengehäuse'=>'HddCase','Festplatte'=>'Harddisk','USB-Stick'=>'UsbStick', 'SD-Card'=>'SdCard', 'CD-ROM'=>'CdRom','DVD-ROM'=>'Dvd'})
+  %br
+
+  %label== Name:
+  = text_field :location, :name
+  %br
+
+  %label== Beschreibung:
+  = text_field :location, :description
+  %br
+
+  %label== Aufenthaltsort:
+  = text_field :location, :located
+  %br
+
+  %label== Location (optional):
+  = select_tag 'location[location_id]', '<option value=''></option>'+options_for_select(@locations.map{|x| [x.name,x.id]}), :include_blank=>true
+  %br
+  = submit_tag 'neue Location erzeugen'

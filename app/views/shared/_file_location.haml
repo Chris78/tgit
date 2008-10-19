@@ -17,4 +17,8 @@
       %small
         = l.location.description
       %br
-  %img{:height=>380, :src=>"/files/get?path="+CGI.escape(Iconv.iconv('iso-8859-1','utf-8',File.join(l.path,l.filename)).first)}
+  - path_iso = Iconv.iconv('iso-8859-1','utf-8',File.join(l.path,l.filename)).first
+  - if File.exists?(path_iso)
+    %img{:style=>"max-height:380px;", :src=>"/files/get?path="+CGI.escape(path_iso)}
+  - else
+    %img{:src=>"public/images/no_disk.gif", :alt=>'not accessible'}
