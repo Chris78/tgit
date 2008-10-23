@@ -8,14 +8,7 @@
   %h2 Locations
   - @fileinfo.file_locations.each do |l|
     = render :partial=>'shared/file_location', :object=>l
-
-  %form{:action=>"/random_tags/update/#{@fileinfo.id}", :params=>params, :method=>:post}
-    = text_field :fileinfo, :tag_list, :size=>100
-    = submit_tag 'speichern'
-    %div
-      Objekte, die noch keine Schlagworte haben, bevorzugen?
-      = check_box_tag :only_untagged, 1, params.delete(:only_untagged)=='true', :id=>'chk_only_untagged'
-      = link_to 'weiter', {:action=>:show, :params=>params}, {:onclick=>"if($('chk_only_untagged').checked){$(this).href=$(this).href+'?only_untagged='+$('chk_only_untagged').checked}"}
+  = render :partial=>'form'
 
 - else
   %h1== Keine Files zum taggen gefunden.

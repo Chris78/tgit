@@ -25,6 +25,6 @@ class RandomTagsController < ApplicationController
     if inf=Fileinfo.find(params[:id])
       inf.update_attributes(params[:fileinfo])
     end
-    redirect_to :action=>:show
+    redirect_to :action=>:show, :only_untagged=>params[:only_untagged]
   end
 end

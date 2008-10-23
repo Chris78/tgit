@@ -1,5 +1,22 @@
 # Be sure to restart your web server when you modify this file.
 
+#module Rails
+#  class Configuration
+#    def database_configuration
+#      conf = YAML::load(ERB.new(IO.read(database_configuration_file)).result)
+#      if defined?(TAR2RUBYSCRIPT)
+#        conf.each do |k, v|
+#          if v["adapter"] =~ /^sqlite/
+#            v["database"] = oldlocation(v["database"]) if v.include?("database")
+#            v["dbfile"]   = oldlocation(v["dbfile"])   if v.include?("dbfile")
+#          end
+#        end
+#      end
+#      conf
+#    end
+#  end
+#end
+
 # Uncomment below to force Rails into production mode when 
 # you don't control web/app server and can't set it the proper way
 # ENV['RAILS_ENV'] ||= 'production'

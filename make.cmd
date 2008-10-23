@@ -1,7 +1,7 @@
 REM clean up a little before packing all that stuff into a tarball:
 del /Y tmp\sessions\*.*
 copy /Y log\clean_development.log log\development.log
-
+copy /Y log\clean_development.log log\standalone.log
 
 REM create the tar ball and make an EXE from it.
 cd..
