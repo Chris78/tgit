@@ -30,7 +30,7 @@ class Fileinfo<ActiveRecord::Base
 
   def self.add_file(location, path, filename, opts={})
     path_file=File.join(path,filename)
-    f=File.open(path_file)
+    f=File.open(path_file,'rb')
     s=Digest::SHA2.hexdigest(f.read)
     f.close
     inf=Fileinfo.find_or_create_by_sha2_and_filesize(s, File.size(path_file))
