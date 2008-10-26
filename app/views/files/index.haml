@@ -1,6 +1,6 @@
 #tag_cloud{:style=>'float:right;width:250px;'}
-  - tag_cloud @tags, %w(css1 css2 css3 css4) do |tag, css_class|
-    = link_to tag.name, params.merge(:tagged_with=>"#{params[:tagged_with].blank? ? '' : params[:tagged_with]+','}#{tag.name}"), :class=>css_class
+  - tag_cloud @tags, %w(css1 css2 css3 css4 css5 css6 css7 css8) do |tag, css_class|
+    = link_to tag.name, params.merge(:tagged_with=>"#{params[:tagged_with].blank? ? '' : params[:tagged_with]+','}#{tag.name}"), :class=>css_class, :title=>"(#{tag.count})"
 
 - form_tag '/files', :method=>:get do
   %label== match all?
