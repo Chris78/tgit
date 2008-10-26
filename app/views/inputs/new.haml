@@ -2,7 +2,8 @@
   = params[:message]
 - form_tag '/input', :method=>:post, :onsubmit=>"return confirm('Sind sie sicher? Stimmt die Location?');" do
   %label== Location auswählen:
-  = select_tag 'location_id', options_for_select(@locations.reject{|x| [Computer,HddCase].include?(x.class)}.map{|x| [x.full_name,x.id]}, params[:location_id].to_i)
+  - options_fs = @locations.reject{|x| [Computer,HddCase].include?(x.class)}.map{|x| "<option title=\"#{x.description}\" value=\"#{x.id}\">#{x.full_name}</option>\n"}
+  = select_tag 'location_id', options_fs
   %br
   %label== Dateien aus folgendem Pfad hinzufügen:
   = text_field_tag 'path'
