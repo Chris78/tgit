@@ -19,7 +19,7 @@ class FilesController < ApplicationController
     @fileinfos=@fileinfos.paginate(:per_page=>5, :page=>params[:page])
     @tags=Fileinfo.tag_counts(:conditions=>"tags.name in ('#{deeper_tags.join("','")}')")
     @tags=Fileinfo.tag_counts if @tags.blank?
-    @tags.sort!{|t1,t2| t1.name<=>t2.name}
+    @tags.sort!{|t1,t2| t1.name.downcase<=>t2.name.downcase}
   end
 
 end
