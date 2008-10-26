@@ -15,9 +15,9 @@ class FilesController < ApplicationController
       deeper_tags += i.tag_list
     end
     deeper_tags.uniq!
-    deeper_tags=deeper_tags-((params[:tagged_with]||'').split(',').map{|i| i.strip}.reject{|j| j.blank?})
+    tagged_with=(params[:tagged_with]||'').split(',').map{|i| i.strip}#.reject{|j| j.blank?}
     @fileinfos=@fileinfos.paginate(:per_page=>5, :page=>params[:page])
-    @tags=Fileinfo.tag_counts(:conditions=>"tags.name in ('#{deeper_tags.join("','")}')")
+    @tags=Fileinfo.tag_counts(:conditions=>"tags.name IN ('#{deeper_tags.join("','")}') AND tags.name NOT IN ('#{tagged_with.join("','")}')")
     @tags=Fileinfo.tag_counts if @tags.blank?
     @tags.sort!{|t1,t2| t1.name.downcase<=>t2.name.downcase}
   end
