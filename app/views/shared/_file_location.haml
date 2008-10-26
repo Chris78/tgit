@@ -1,5 +1,11 @@
 - l=file_location
 %div{:id=>"file_location_#{l.id}"}
+  - path_iso = Iconv.iconv('iso-8859-1','utf-8',File.join(l.path,l.filename)).first
+  - unless @preview_done
+    - if File.exists?(path_iso)
+      %img{:style=>"max-height:380px;", :src=>"/files/get?path="+CGI.escape(path_iso)}
+      - @preview_done=true
+      %br
   = link_to_function 'Location-Details', "$(this).next('div').removeClassName('hidden');$(this).remove();"
   %br
   %div.hidden{:style=>'border:dotted 1px black; margin:3px; padding:3px;'}
@@ -17,8 +23,3 @@
       %small
         = l.location.description
       %br
-  - path_iso = Iconv.iconv('iso-8859-1','utf-8',File.join(l.path,l.filename)).first
-  - if File.exists?(path_iso)
-    %img{:style=>"max-height:380px;", :src=>"/files/get?path="+CGI.escape(path_iso)}
-  - else
-    %img{:src=>"public/images/no_disk.gif", :alt=>'not accessible'}
