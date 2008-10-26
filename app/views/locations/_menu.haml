@@ -1,0 +1,5 @@
+- @selected||=''
+#menu{:style=>'background-color:#FAFAFA;'}
+  #menu_content{:style=>"padding-left:15px;"}
+    = @menu.map{|m| link_to m[:name], m[:url], (m[:html_options]||{}).update(:class=>(m[:html_options][:id]==@selected ? 'selected' : ''))}.join(' ')
+  %hr

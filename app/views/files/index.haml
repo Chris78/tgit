@@ -15,18 +15,11 @@
 - current_tags=(params[:tagged_with]||'').split(',').map{|t| t.strip}
 - remove_links=[]
 - current_tags.each do |t|
-  - remove_links << link_to(t, params.merge(:tagged_with=>(current_tags-[t]).join(',')), :style=>'color:red;font-weight:bold;font-size:1.5em;')
+  - remove_links << link_to(image_tag('/images/minus.gif', :border=>:none)+t, params.merge(:tagged_with=>(current_tags-[t]).join(',')), :style=>'color:red;font-weight:bold;font-size:1.5em;', :title=>'Schlagwort aus der Suche entfernen')
 = remove_links.join('&nbsp;&bull;&nbsp;')
 %br
 %hr
 
-- @fileinfos.each do |f|
-  - @preview_done=false
-  - f.file_locations.each do |fl|
-    = render :partial=>'shared/file_location', :object=>fl
-  - unless @preview_done
-    %img{:src=>"/images/no_disk.gif", :alt=>'not accessible', :title=>'none of them accessible at present'}
-  = render :partial=>'shared/tags', :locals=>{:obj=>f}
-  %hr
+= render :partial=>'fileinfos/fileinfos', :locals=>{:fileinfos=>@fileinfos}
 %br
 = will_paginate @fileinfos

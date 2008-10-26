@@ -1,3 +1,6 @@
+body {
+  font-family: Helventica; }
+
 .hidden {
   display: none; }
 
@@ -14,3 +17,27 @@
 
 .clear {
   clear: both; }
+
+#menu a, #header a {
+  padding: 4px;
+  border: solid 1px gray;
+  border-top: solid 2px gray;
+  border-right: solid 2px gray;
+  text-decoration: none;
+  font-family: Helvetica;
+  font-weight: normal;
+  font-size: 0.9em;
+  color: gray;
+  padding-bottom: 5px; }
+#menu a.selected, #header a.selected {
+  background-color: #ddddff;
+  color: black!important;
+  font-weight: bold;
+  border-bottom: none;
+  padding-bottom: 10px; }
+#menu a:visited, #header a:visited {
+  color: gray; }
+
+.w300 {
+  display: block;
+  width: 300px; }

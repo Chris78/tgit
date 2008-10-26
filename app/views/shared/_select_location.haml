@@ -1,0 +1,4 @@
+%label== Location auswählen:
+- options_fs = locations.reject{|x| [Computer,HddCase].include?(x.class)}.map{|x| "<option title=\"#{x.description}\" value=\"#{x.id}\" #{selected.to_i==x.id ? 'selected="selected"' : ''}>#{x.full_name}</option>\n"}
+- options_fs.unshift("<option></option>\n") if include_blank
+= select_tag 'location_id', options_fs

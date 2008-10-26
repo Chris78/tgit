@@ -5,14 +5,14 @@
     = stylesheet_link_tag 'tag_cloud','application'
     = javascript_include_tag :defaults
   %body{:style=>"margin:0px;"}
-    #header{:style=>'background-color:#e6e6e6;'}
+    #header{:style=>'padding-top:4px;background-color:#e6e6e6;'}
       #header_content{:style=>"padding-left:15px;"}
-        = link_to 'Locations verwalten', '/locations'
+        = link_to 'Locations', '/locations', :class=>(params[:controller]=='locations' ? 'selected' : '')
         &bull;
-        = link_to 'Dateien eintragen', '/inputs/new'
+        = link_to 'Dateien eintragen', '/inputs/new', :class=>(params[:controller]=='inputs' ? 'selected' : '')
         &bull;
-        = link_to 'Dateien taggen', '/random_tags/show'
+        = link_to 'Dateien taggen', '/random_tags/show', :class=>(params[:controller]=='random_tags' ? 'selected' : '')
         &bull;
-        = link_to 'Dateien suchen', '/files'
+        = link_to 'Dateien suchen', '/files', :class=>(params[:controller]=='files' ? 'selected' : '')
       %hr
     = yield

@@ -1,0 +1,8 @@
+- fileinfos.each do |fi|
+  - @preview_done=false
+  - fi.file_locations.each do |fl|
+    = render :partial=>'file_locations/file_location', :object=>fl
+  - unless @preview_done
+    %img{:src=>"/images/no_disk.gif", :alt=>'not accessible', :title=>'none of them accessible at present'}
+  = render :partial=>'shared/tags', :locals=>{:obj=>fi}
+  %hr

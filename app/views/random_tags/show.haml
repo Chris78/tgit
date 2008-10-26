@@ -7,7 +7,7 @@
 
   %h2 Locations
   - @fileinfo.file_locations.each do |l|
-    = render :partial=>'shared/file_location', :object=>l
+    = render :partial=>'file_locations/file_location', :object=>l
   = render :partial=>'form'
 
 - else

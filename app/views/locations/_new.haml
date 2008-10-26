@@ -1,5 +1,5 @@
 - form_tag '/locations/create', :method=>:post do
-  %label== Location-Type:
+  %label.w300== Location-Type:
   = select_tag 'location[type]', options_for_select({'Computer'=>'Computer','Festplattengehäuse'=>'HddCase','Festplatte'=>'Harddisk','USB-Stick'=>'UsbStick', 'SD-Card'=>'SdCard', 'CD-ROM'=>'CdRom','DVD-ROM'=>'Dvd'})
   %br
 

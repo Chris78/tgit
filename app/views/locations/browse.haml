@@ -1,0 +1,23 @@
+= render :partial=>'menu'
+- form_tag do
+  = location_selector(@locations, :selected=>params[:id], :include_blank=>true)
+  %br
+  Filter:
+  %br
+  Dateiname:
+  = text_field_tag :filter_filename, params[:filter_filename]
+  %br
+  Pfad:
+  = text_field_tag :filter_path, params[:filter_path]
+  %br
+  = submit_tag 'suchen'
+
+%br
+%br
+- if @fileinfos
+  %h2== Suchergebnisse:
+  = render :partial=>'fileinfos/fileinfos', :locals=>{:fileinfos=>@fileinfos}
+
+%br
+= will_paginate @fileinfos
+
