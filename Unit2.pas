@@ -22,7 +22,6 @@ type
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure StringGrid1SelectCell(Sender: TObject; ACol, ARow: Integer; var CanSelect: Boolean);
     procedure edtSelectedTagsChange(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure FormResize(Sender: TObject);
@@ -34,9 +33,16 @@ type
     sltb: TSQLiteTable;
     lastLabel: TLabel;
     maxTagCount: Integer;
+    selectedTags: TStringlist;
+    procedure highlight(Sender: TObject);
+    procedure unhighlight(Sender: TObject);
+    procedure updateDocuments;
+    procedure tagClick(Sender: TObject);
+    procedure selectTag(tag:TLabel);
+    procedure unselectTag(tag:TLabel);
     procedure ReloadTagCloud(limit:Integer);
     procedure showFileinfos(sltb: TSQLiteTable);
-    function  GetTagCloudAll(limit:Integer): TSQLIteTable;
+    function  GetTagCloud(limit:Integer): TSQLIteTable;
     function  GetItemsFor(tags: TStringList; match_all:Boolean): TSQLIteTable;
     procedure renderTag(tag_item,tag_count:String;i:Integer);
     procedure showTagcloud(tags:TSQLIteTable);
@@ -63,9 +69,11 @@ var res:TSQLiteTable;
 begin
   slDBPath := ExtractFilepath(application.exename)+ 'db\tgit.db';
   sldb := TSQLiteDatabase.Create(slDBPath);
-  sltb:=sldb.GetTable('select count(*) as anz from tags');
+  sltb := sldb.GetTable('select count(*) as anz from tags');
   reloadTagCloud(floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max)));
   lastLabel:=nil;
+  selectedTags:=TStringlist.create;
+  selectedTags.Sorted:=true;
 end;
 
 function TForm1.GetItemsFor(tags:TStringList; match_all: Boolean):TSQLiteTable;
@@ -117,11 +125,12 @@ end;
 procedure TForm1.ReloadTagCloud(limit:Integer);
 begin
   clearTagCloud;
-  showTagcloud(GetTagCloudAll(limit));
+  showTagcloud(GetTagCloud(limit));
 end;
 
-function TForm1.GetTagCloudAll(limit:Integer): TSQLIteTable;
+function TForm1.GetTagCloud(limit:Integer): TSQLIteTable;
 begin
+  // hier selectedTags verwenden!
   result := slDb.GetTable('SELECT name, id, anz '+
     'FROM '+
     '  ( SELECT name, tags.id AS id, count(*) as anz '+
@@ -130,7 +139,7 @@ begin
     '    GROUP BY tags.id order by anz DESC'+
     '    LIMIT '+inttostr(limit)+
     '  ) AS temp '+
-    'ORDER BY name');
+    'ORDER BY name COLLATE NOCASE');
 end;
 
 
@@ -169,9 +178,73 @@ begin
   tag.Caption:=tag_item;
   tag.Hint:=tag_count+' mal getagged';
   tag.Transparent:=true;
+  tag.Font.Color:=clBlack;
   tag.Font.Style:=[fsUnderline];
   tag.Font.Name:='Helvetica';
   tag.Font.Size:=floor(minFontSize+(strtoint(tag_count)/maxTagCount)*incFontBy);
+  tag.OnMouseEnter:=highlight;
+  tag.OnMouseLeave:=unhighlight;
+  tag.OnClick:=tagClick;
+end;
+
+// EventHandling für dynamisch erzeugte TagLabels:
+procedure TForm1.tagClick(Sender:TObject);
+var
+  tag: TLabel;
+begin
+  tag:=TLabel(Sender);
+  if tag.tag=0 then
+    selectTag(tag)
+  else
+    unselectTag(tag);
+  edtSelectedTags.Text:=selectedTags.CommaText;
+  updateDocuments;
+  //updateTagCloud(GetRelatedTags);
+end;
+
+procedure TForm1.selectTag(tag:TLabel);
+var
+  p:Integer;
+begin
+  tag.tag:=1;
+  tag.Font.Color:=clBlue;
+  if not selectedTags.Find(tag.Caption,p) then
+    begin
+      selectedTags.add(tag.Caption);
+    end;
+end;
+
+procedure TForm1.unselectTag(tag:TLabel);
+var
+  p:Integer;
+begin
+  tag.tag:=0;
+  unhighlight(tag);
+  if selectedTags.Find(tag.Caption,p) then
+    selectedTags.Delete(p);
+end;
+
+procedure TForm1.highlight(Sender:TObject);
+begin
+  TLabel(Sender).Font.color:=clred;
+end;
+
+procedure TForm1.unhighlight(Sender:TObject);
+var tag: TLabel;
+begin
+  tag:=TLabel(Sender);
+  if tag.tag=1 then
+    tag.Font.color:=clBlue
+  else
+    tag.Font.Color:=clBlack;
+end;
+
+// <-- EventHandling für dynamisch erzeugte TagLabels
+
+
+procedure TForm1.updateDocuments;
+begin
+  showFileinfos(GetItemsFor(selectedTags,Checkbox1.checked));
 end;
 
 procedure TForm1.arrangeTagCloud();
@@ -217,41 +290,9 @@ begin
       end;
     lastLabel:=tag;
   end;
+  TagCloud.Height:=lastLabel.Top+h+rowPadding;
 end;
 
-
-procedure TForm1.FormDestroy(Sender: TObject);
-begin
-  sltb.free;
-  sldb.free;
-  clearTagCloud;
-end;
-
-procedure TForm1.StringGrid1SelectCell(Sender: TObject; ACol,ARow: Integer; var CanSelect: Boolean);
-var a: TStringList;
-var res: TSQLiteTable;
-var s,t:String;
-var i:Integer;
-var b: TStringlist;
-begin
-  b:=TStringlist.create;
-//  s:=concat(edtSelectedTags.text, ', ', StringGrid1.Cells[0, ARow]);
-  a:=Split(s,',');
-  edtSelectedTags.text:=assembleItWell(a,', ');
-  for i:=0 to a.Count-1 do
-  begin
-    t:=a[i];
-    if(t<>'') then begin
-      if(b.IndexOf(t)=-1) then begin
-        b.Add(t);
-      end;
-    end;
-  end;
-  a.free;
-  res:=GetItemsFor(b,Checkbox1.checked);
-  b.free;
-  showFileinfos(res);
-end;
 
 procedure TForm1.edtSelectedTagsChange(Sender: TObject);
 begin
@@ -341,7 +382,14 @@ begin
       sltb:=sldb.GetTable('select count(*) as anz from tags');
       newLimit:=floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*Trackbar1.Position/TrackBar1.max);
       reloadTagCloud(newLimit);
-    end;  
+    end;
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  sltb.free;
+  //sldb.free;
+  clearTagCloud;
 end;
 
 end.

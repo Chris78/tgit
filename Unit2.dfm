@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 41
-  Top = 100
-  Width = 1567
+  Left = 0
+  Top = 74
+  Width = 1559
   Height = 873
   Caption = 'Tgit GUI'
   Color = clBtnFace
@@ -15,8 +15,8 @@ object Form1: TForm1
   OnDestroy = FormDestroy
   OnResize = FormResize
   DesignSize = (
-    1559
-    846)
+    1551
+    830)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
@@ -54,9 +54,9 @@ object Form1: TForm1
   object TagCloud: TGroupBox
     Left = 744
     Top = 32
-    Width = 809
-    Height = 802
-    Anchors = [akLeft, akTop, akRight, akBottom]
+    Width = 801
+    Height = 786
+    Anchors = [akLeft, akTop, akRight]
     Caption = 'TagCloud'
     TabOrder = 2
   end
@@ -84,6 +84,7 @@ object Form1: TForm1
     Top = 8
     Width = 745
     Height = 25
+    Anchors = [akLeft, akTop, akRight]
     Max = 30
     Min = 1
     Orientation = trHorizontal
