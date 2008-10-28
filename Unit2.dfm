@@ -1,8 +1,8 @@
 object Form1: TForm1
   Left = 41
-  Top = 141
+  Top = 100
   Width = 1567
-  Height = 1058
+  Height = 873
   Caption = 'Tgit GUI'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -13,9 +13,10 @@ object Form1: TForm1
   OldCreateOrder = False
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnResize = FormResize
   DesignSize = (
     1559
-    1031)
+    846)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
@@ -25,25 +26,19 @@ object Form1: TForm1
     Height = 13
     Caption = 'Label1'
   end
-  object StringGrid1: TStringGrid
-    Left = 744
-    Top = 336
-    Width = 369
-    Height = 249
-    ColCount = 2
-    DefaultColWidth = 300
-    DefaultRowHeight = 16
-    FixedCols = 0
-    FixedRows = 0
-    TabOrder = 0
-    OnSelectCell = StringGrid1SelectCell
+  object Label2: TLabel
+    Left = 750
+    Top = 13
+    Width = 51
+    Height = 13
+    Caption = 'Limit Tags:'
   end
   object edtSelectedTags: TEdit
     Left = 8
     Top = 8
     Width = 481
     Height = 21
-    TabOrder = 1
+    TabOrder = 0
     OnChange = edtSelectedTagsChange
   end
   object StringGrid2: TStringGrid
@@ -54,36 +49,16 @@ object Form1: TForm1
     DefaultColWidth = 180
     DefaultRowHeight = 16
     FixedCols = 0
-    TabOrder = 2
+    TabOrder = 1
   end
-  object GroupBox1: TGroupBox
+  object TagCloud: TGroupBox
     Left = 744
-    Top = 16
-    Width = 794
-    Height = 699
+    Top = 32
+    Width = 809
+    Height = 802
     Anchors = [akLeft, akTop, akRight, akBottom]
-    Caption = 'GroupBox1'
-    TabOrder = 3
-    object Label2: TLabel
-      Left = 2
-      Top = 28
-      Width = 32
-      Height = 669
-      Align = alLeft
-      BiDiMode = bdLeftToRight
-      Caption = 'Label2'
-      ParentBiDiMode = False
-    end
-    object Label3: TLabel
-      Left = 2
-      Top = 15
-      Width = 790
-      Height = 13
-      Align = alTop
-      BiDiMode = bdLeftToRight
-      Caption = 'Label3'
-      ParentBiDiMode = False
-    end
+    Caption = 'TagCloud'
+    TabOrder = 2
   end
   object CheckBox1: TCheckBox
     Left = 496
@@ -93,7 +68,7 @@ object Form1: TForm1
     Caption = 'match all?'
     Checked = True
     State = cbChecked
-    TabOrder = 4
+    TabOrder = 3
   end
   object Button1: TButton
     Left = 40
@@ -101,26 +76,25 @@ object Form1: TForm1
     Width = 75
     Height = 25
     Caption = 'Test SHA2'
-    TabOrder = 5
+    TabOrder = 4
     OnClick = Button1Click
   end
-  object TabbedNotebook1: TTabbedNotebook
-    Left = 16
-    Top = 16
-    Width = 705
-    Height = 577
-    TabsPerRow = 15
-    TabFont.Charset = DEFAULT_CHARSET
-    TabFont.Color = clBtnText
-    TabFont.Height = -11
-    TabFont.Name = 'MS Sans Serif'
-    TabFont.Style = []
-    TabOrder = 6
-    object TTabPage
-      Left = 4
-      Top = 24
-      Caption = 'Default'
-    end
+  object TrackBar1: TTrackBar
+    Left = 808
+    Top = 8
+    Width = 745
+    Height = 25
+    Max = 30
+    Min = 1
+    Orientation = trHorizontal
+    Frequency = 1
+    Position = 15
+    SelEnd = 0
+    SelStart = 0
+    TabOrder = 5
+    TickMarks = tmBottomRight
+    TickStyle = tsAuto
+    OnChange = TrackBar1Change
   end
   object DCP_sha256: TDCP_sha256
     Id = 28

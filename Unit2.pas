@@ -10,34 +10,38 @@ uses
 type
   TByteArray = Array of Byte;
   TForm1 = class(TForm)
-    StringGrid1: TStringGrid;
     edtSelectedTags: TEdit;
     StringGrid2: TStringGrid;
-    GroupBox1: TGroupBox;
+    TagCloud: TGroupBox;
     CheckBox1: TCheckBox;
     Label1: TLabel;
     Button1: TButton;
     DCP_sha256: TDCP_sha256;
+    TrackBar1: TTrackBar;
     Label2: TLabel;
-    Label3: TLabel;
-    TabbedNotebook1: TTabbedNotebook;
-    
+
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure StringGrid1SelectCell(Sender: TObject; ACol, ARow: Integer; var CanSelect: Boolean);
     procedure edtSelectedTagsChange(Sender: TObject);
     procedure Button1Click(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure TrackBar1Change(Sender: TObject);
   private
     { Private declarations }
     slDBPath: String;
     sldb: TSQLiteDatabase;
     sltb: TSQLiteTable;
+    lastLabel: TLabel;
+    maxTagCount: Integer;
     procedure ReloadTagCloud(limit:Integer);
     procedure showFileinfos(sltb: TSQLiteTable);
-    procedure showTagcloud(tags:TSQLIteTable);
     function  GetTagCloudAll(limit:Integer): TSQLIteTable;
     function  GetItemsFor(tags: TStringList; match_all:Boolean): TSQLIteTable;
     procedure renderTag(tag_item,tag_count:String;i:Integer);
+    procedure showTagcloud(tags:TSQLIteTable);
+    procedure clearTagcloud;
+    procedure arrangeTagCloud;
     function  GetSha2(filename:String): String;
     function  Sha2(s:String): String;
     function  StringToArrayOfBytes(s:String): TByteArray;
@@ -59,7 +63,9 @@ var res:TSQLiteTable;
 begin
   slDBPath := ExtractFilepath(application.exename)+ 'db\tgit.db';
   sldb := TSQLiteDatabase.Create(slDBPath);
-  reloadTagCloud(8);
+  sltb:=sldb.GetTable('select count(*) as anz from tags');
+  reloadTagCloud(floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max)));
+  lastLabel:=nil;
 end;
 
 function TForm1.GetItemsFor(tags:TStringList; match_all: Boolean):TSQLiteTable;
@@ -102,8 +108,15 @@ begin
   end;
 end;
 
+procedure TForm1.clearTagCloud;
+begin
+  while TagCloud.ControlCount>0 do
+    TagCloud.Controls[0].destroy;
+end;
+
 procedure TForm1.ReloadTagCloud(limit:Integer);
 begin
+  clearTagCloud;
   showTagcloud(GetTagCloudAll(limit));
 end;
 
@@ -125,6 +138,7 @@ procedure TForm1.showTagcloud(tags:TSQLIteTable);
 var i: Integer;
 var tag_item,tag_count: String;
 begin
+  maxTagCount:=0;
   i:=0;
   if tags.Count > 0 then
   begin
@@ -132,44 +146,85 @@ begin
     begin
       tag_item:=UTF8Decode(tags.FieldAsString(tags.FieldIndex['Name']));
       tag_count:=tags.FieldAsString(tags.FieldIndex['anz']);
+      maxTagCount:=max(maxTagCount,StrToInt(tag_count));
       renderTag(tag_item,tag_count,i);
       inc(i);
       tags.Next;
     end;
   end;
-  TabbedNotebook1.Pages.Delete(0);
-  TabbedNotebook1.PageIndex:=0;
+  arrangeTagCloud;
   tags.Free;
 end;
 
 procedure TForm1.renderTag(tag_item,tag_count:String; i:Integer);
 // i ist die "laufende Nummer" der Tags (wenn diese z.B. in ein Stringgrid eingetragen werden sollen)
-var tag: TLabel;
-j,k:Integer;
+const
+  minFontSize=10; // Minimale Fontgröße für Tags
+  incFontBy=15;   // Maximale Fontgröße ist minFontSize+incFontSize
+var
+  tag: TLabel;
 begin
-// Stringgrid-Variante:
-//  StringGrid1.rowcount:=i+1;
-//  StringGrid1.cells[0,i]:=tag_item;
-//  StringGrid1.cells[1,i]:=tag_count;
-  tag:=TLabel.create(GroupBox1);
-  tag.Parent:=GroupBox1;
-  tag.Caption:=tag_item+' ('+tag_count+')';
-  TabbedNotebook1.Pages.Add(tag.Caption);
-  j:=i div 5;
-  k:=i mod 5;
-  tag.Top:=j*tag.Height;
-  tag.Left:=k*tag.Width;
-  //tag.Transparent:=true;
-  tag.align:=alLeft;
-  tag.Font.Size:=min(20,floor(8+strtoint(tag_count)/10));
+  tag:=TLabel.create(TagCloud);
+  tag.Parent:=TagCloud;
+  tag.Caption:=tag_item;
+  tag.Hint:=tag_count+' mal getagged';
+  tag.Transparent:=true;
+  tag.Font.Style:=[fsUnderline];
+  tag.Font.Name:='Helvetica';
+  tag.Font.Size:=floor(minFontSize+(strtoint(tag_count)/maxTagCount)*incFontBy);
 end;
+
+procedure TForm1.arrangeTagCloud();
+const
+  rowPadding=2;
+  colPadding=10;
+  marginLeft=5;
+  marginTop=15;
+var
+  i,l,t,h,voffset:Integer;
+  tag: TLabel;
+begin
+  lastLabel:=nil;
+  for i:=0 to TagCloud.ComponentCount-1 do
+  begin
+    tag:=TLabel(TagCloud.Components[i]);
+    if lastLabel=nil then
+      begin
+        tag.Top:=marginTop;
+        tag.Left:=marginLeft;
+        l:=tag.Left+tag.width+colPadding;
+        t:=tag.Top+tag.Height+rowPadding;
+        h:=tag.height;
+      end
+    else
+      begin
+        h:=max(h,lastLabel.Height);
+        l:=lastLabel.Left+lastLabel.width+colPadding;
+        t:=lastLabel.Top;
+        voffset:=0; // zur schöneren vertikalen Ausrichtung zweier benachbarter stark unterschiedlich großer Tags
+        if l+tag.width > tag.Parent.Width then
+          begin
+            l:=marginLeft;
+            t:=t+h+rowPadding;
+            h:=0;
+          end
+        else
+          begin
+            voffset:=floor(lastLabel.Height-tag.height) div 2;
+          end;
+        tag.Left:=l;
+        tag.Top:=t+voffset;
+      end;
+    lastLabel:=tag;
+  end;
+end;
+
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
   sltb.free;
   sldb.free;
-  while GroupBox1.ControlCount>0 do
-    GroupBox1.Controls[0].free;
+  clearTagCloud;
 end;
 
 procedure TForm1.StringGrid1SelectCell(Sender: TObject; ACol,ARow: Integer; var CanSelect: Boolean);
@@ -180,7 +235,7 @@ var i:Integer;
 var b: TStringlist;
 begin
   b:=TStringlist.create;
-  s:=concat(edtSelectedTags.text, ', ', StringGrid1.Cells[0, ARow]);
+//  s:=concat(edtSelectedTags.text, ', ', StringGrid1.Cells[0, ARow]);
   a:=Split(s,',');
   edtSelectedTags.text:=assembleItWell(a,', ');
   for i:=0 to a.Count-1 do
@@ -271,6 +326,22 @@ end;
 procedure TForm1.alert(s:String);
 begin
   messageDlg(s,mtInformation,[mbOK],0);
+end;
+
+procedure TForm1.FormResize(Sender: TObject);
+begin
+  arrangeTagCloud;
+end;
+
+procedure TForm1.TrackBar1Change(Sender: TObject);
+var newLimit: Integer;
+begin
+  if not TrackBar1.Dragging then
+    begin
+      sltb:=sldb.GetTable('select count(*) as anz from tags');
+      newLimit:=floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*Trackbar1.Position/TrackBar1.max);
+      reloadTagCloud(newLimit);
+    end;  
 end;
 
 end.
