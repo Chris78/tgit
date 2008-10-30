@@ -5,10 +5,12 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, SQLiteTable3, ComCtrls, Grids, StringItWell,
-  DCPcrypt2, DCPsha256, Math, TabNotBk;
+  DCPcrypt2, DCPsha256, Math, TabNotBk, ExtCtrls;
 
 type
   TByteArray = Array of Byte;
+  TIntegerArray = Array of Integer;
+
   TForm1 = class(TForm)
     edtSelectedTags: TEdit;
     StringGrid2: TStringGrid;
@@ -19,6 +21,7 @@ type
     DCP_sha256: TDCP_sha256;
     TrackBar1: TTrackBar;
     Label2: TLabel;
+    Timer1: TTimer;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -26,20 +29,24 @@ type
     procedure Button1Click(Sender: TObject);
     procedure FormResize(Sender: TObject);
     procedure TrackBar1Change(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
   private
     { Private declarations }
     slDBPath: String;
     sldb: TSQLiteDatabase;
     sltb: TSQLiteTable;
+    ItemsForSelectedTags: TSQLIteTable;
     lastLabel: TLabel;
     maxTagCount: Integer;
     selectedTags: TStringlist;
+    clickedTagName: String;
+    clickedTagWasActive: Boolean;
     procedure highlight(Sender: TObject);
     procedure unhighlight(Sender: TObject);
     procedure updateDocuments;
     procedure tagClick(Sender: TObject);
-    procedure selectTag(tag:TLabel);
-    procedure unselectTag(tag:TLabel);
+    procedure selectTag(tag:String);
+    procedure unselectTag(tag:String);
     procedure ReloadTagCloud(limit:Integer);
     procedure showFileinfos(sltb: TSQLiteTable);
     function  GetTagCloud(limit:Integer): TSQLIteTable;
@@ -52,7 +59,8 @@ type
     function  Sha2(s:String): String;
     function  StringToArrayOfBytes(s:String): TByteArray;
     procedure alert(s:String);
-
+    function getCommaListOf(attr:String;t:TSQLiteTable;quot:String): String;
+    function quoteConcatStrList(s:TStringlist): string;
   public
     { Public declarations }
   end;
@@ -65,28 +73,32 @@ implementation
 {$R *.dfm}
 
 procedure TForm1.FormCreate(Sender: TObject);
-var res:TSQLiteTable;
+var
+  res: TSQLiteTable;
+  limit: Integer;
 begin
   slDBPath := ExtractFilepath(application.exename)+ 'db\tgit.db';
   sldb := TSQLiteDatabase.Create(slDBPath);
   sltb := sldb.GetTable('select count(*) as anz from tags');
-  reloadTagCloud(floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max)));
+  limit := floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
+  reloadTagCloud(limit);
   lastLabel:=nil;
   selectedTags:=TStringlist.create;
   selectedTags.Sorted:=true;
 end;
 
+// Holt die Dokumente zu den angegebenen tags.
 function TForm1.GetItemsFor(tags:TStringList; match_all: Boolean):TSQLiteTable;
 var query: String;
 begin
-  query:='SELECT * FROM tags '+
+  query:='SELECT fileinfos.* FROM tags '+
          'LEFT JOIN taggings ON taggings.tag_id=tags.id '+
          'LEFT JOIN fileinfos on fileinfos.id=taggings.taggable_id AND taggings.taggable_type="Fileinfo" '+
          'WHERE tags.name in ("'+
           AssembleItWell(tags,'","')+
          '") '+
          'GROUP BY fileinfos.id';
-  if(match_all) then
+  if match_all then
   begin
     query := query+' HAVING count(distinct tags.id)='+inttostr(tags.count);
   end;
@@ -117,9 +129,17 @@ begin
 end;
 
 procedure TForm1.clearTagCloud;
+var
+  i: Integer;
 begin
-  while TagCloud.ControlCount>0 do
-    TagCloud.Controls[0].destroy;
+  i:=0;
+  while TagCloud.ControlCount>i do
+    begin
+//      if TControl(exceptt)=TagCloud.Controls[i] then
+//        inc(i)
+//      else
+        TagCloud.Controls[i].free;
+    end;
 end;
 
 procedure TForm1.ReloadTagCloud(limit:Integer);
@@ -128,20 +148,62 @@ begin
   showTagcloud(GetTagCloud(limit));
 end;
 
-function TForm1.GetTagCloud(limit:Integer): TSQLIteTable;
+// Zeigt die TagCloud in Abhängigkeit der aktuell gewählten Tags und Dokumente:
+function TForm1.GetTagCloud(limit:Integer): TSQLiteTable;
+var
+  query,taggable_ids,tagnames,joinCondition,having: String;
+  tmp: TSQLiteTable;
 begin
-  // hier selectedTags verwenden!
-  result := slDb.GetTable('SELECT name, id, anz '+
+  if limit=0 then
+    begin
+      tmp := sldb.GetTable('select count(*) as anz from tags');
+      limit := floor(tmp.FieldAsInteger(tmp.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
+    end;
+  joinCondition:='';
+  having:='';
+  if ItemsForSelectedTags<>nil then
+  begin
+    taggable_ids:=getCommaListOf('id',itemsForSelectedTags,'');
+//    alert('taggable_ids = '+taggable_ids);
+    if taggable_ids<>'' then
+      joinCondition:=' AND taggable_type="Fileinfo" AND taggings.taggable_id IN ('+taggable_ids+') '
+    else
+      joinCondition:=' AND 1=2 '; // unmögliche Bedingung
+    tagnames:=quoteConcatStrList(selectedTags);
+//    alert('tagnames = '+tagnames);
+//    having:=' HAVING tags.name NOT IN ('+tagnames+') ';
+  end;
+  query:='SELECT name, id, anz '+
     'FROM '+
     '  ( SELECT name, tags.id AS id, count(*) as anz '+
     '    FROM tags '+
-    '    LEFT JOIN taggings on taggings.tag_id=tags.id '+
-    '    GROUP BY tags.id order by anz DESC'+
+    '    JOIN taggings ON taggings.tag_id=tags.id '+
+       joinCondition +
+    '    GROUP BY tags.id '+
+       having+
+    '    ORDER BY anz DESC '+
     '    LIMIT '+inttostr(limit)+
     '  ) AS temp '+
-    'ORDER BY name COLLATE NOCASE');
+    'ORDER BY name COLLATE NOCASE';
+  result := slDb.GetTable(query);
 end;
 
+function TForm1.getCommaListOf(attr:String;t:TSQLiteTable;quot:String): String;
+var
+  val: String;
+begin
+  result:='';
+  t.MoveFirst;
+  while not t.EOF do
+  begin
+    val:=t.FieldAsString(t.FieldIndex[attr]);
+    if result='' then
+      result:=result+quot+val+quot
+    else
+      result:=result+','+quot+val+quot;
+    t.Next;
+  end;
+end;
 
 procedure TForm1.showTagcloud(tags:TSQLIteTable);
 var i: Integer;
@@ -162,7 +224,6 @@ begin
     end;
   end;
   arrangeTagCloud;
-  tags.Free;
 end;
 
 procedure TForm1.renderTag(tag_item,tag_count:String; i:Integer);
@@ -178,7 +239,16 @@ begin
   tag.Caption:=tag_item;
   tag.Hint:=tag_count+' mal getagged';
   tag.Transparent:=true;
-  tag.Font.Color:=clBlack;
+  if (selectedTags<>nil) and (selectedTags.IndexOf(tag.caption)>-1) then
+    begin
+      tag.Font.Color:=clBlue;
+      tag.tag:=1;
+    end
+  else
+    begin
+      tag.Font.Color:=clBlack;
+      tag.tag:=0;
+    end;
   tag.Font.Style:=[fsUnderline];
   tag.Font.Name:='Helvetica';
   tag.Font.Size:=floor(minFontSize+(strtoint(tag_count)/maxTagCount)*incFontBy);
@@ -189,38 +259,23 @@ end;
 
 // EventHandling für dynamisch erzeugte TagLabels:
 procedure TForm1.tagClick(Sender:TObject);
-var
-  tag: TLabel;
 begin
-  tag:=TLabel(Sender);
-  if tag.tag=0 then
-    selectTag(tag)
-  else
-    unselectTag(tag);
-  edtSelectedTags.Text:=selectedTags.CommaText;
-  updateDocuments;
-  //updateTagCloud(GetRelatedTags);
+  clickedTagName:=TLabel(Sender).caption;
+  clickedTagWasActive:=(TLabel(Sender).tag=1);
+  Timer1.Enabled:=true;
 end;
 
-procedure TForm1.selectTag(tag:TLabel);
-var
-  p:Integer;
+procedure TForm1.selectTag(tag:String);
 begin
-  tag.tag:=1;
-  tag.Font.Color:=clBlue;
-  if not selectedTags.Find(tag.Caption,p) then
-    begin
-      selectedTags.add(tag.Caption);
-    end;
+  if selectedTags.indexOf(tag)=-1 then
+    selectedTags.add(tag);
 end;
 
-procedure TForm1.unselectTag(tag:TLabel);
-var
-  p:Integer;
+procedure TForm1.unselectTag(tag:String);
+var p : Integer;
 begin
-  tag.tag:=0;
-  unhighlight(tag);
-  if selectedTags.Find(tag.Caption,p) then
+  p := selectedTags.IndexOf(tag);
+  if p>-1 then
     selectedTags.Delete(p);
 end;
 
@@ -244,7 +299,8 @@ end;
 
 procedure TForm1.updateDocuments;
 begin
-  showFileinfos(GetItemsFor(selectedTags,Checkbox1.checked));
+  ItemsForSelectedTags:=GetItemsFor(selectedTags,Checkbox1.checked);
+  showFileinfos(ItemsForSelectedTags);
 end;
 
 procedure TForm1.arrangeTagCloud();
@@ -385,11 +441,40 @@ begin
     end;
 end;
 
+function TForm1.quoteConcatStrList(s:TStringlist): string;
+var i: Integer;
+begin
+  result:='';
+  for i:=0 to s.Count-1 do
+  begin
+    if result='' then
+      result:='"'+s[i]+'"'
+    else
+      result:=result+',"'+s[i]+'"';
+  end;
+end;
+
+
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
   sltb.free;
   //sldb.free;
   clearTagCloud;
+end;
+
+procedure TForm1.Timer1Timer(Sender: TObject);
+var
+  tag: TLabel;
+begin
+  Timer1.Enabled:=false;
+  if clickedTagWasActive then
+    unselectTag(clickedTagName)
+  else
+    selectTag(clickedTagName);
+  edtSelectedTags.Text:=selectedTags.CommaText;
+  updateDocuments;
+  clearTagcloud;
+  showTagCloud(GetTagcloud(0));
 end;
 
 end.

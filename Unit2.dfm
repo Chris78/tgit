@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 0
-  Top = 74
+  Left = 48
+  Top = 10
   Width = 1559
   Height = 873
   Caption = 'Tgit GUI'
@@ -16,7 +16,7 @@ object Form1: TForm1
   OnResize = FormResize
   DesignSize = (
     1551
-    830)
+    846)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
@@ -103,5 +103,12 @@ object Form1: TForm1
     HashSize = 256
     Left = 8
     Top = 32
+  end
+  object Timer1: TTimer
+    Enabled = False
+    Interval = 10
+    OnTimer = Timer1Timer
+    Left = 1512
+    Top = 40
   end
 end
