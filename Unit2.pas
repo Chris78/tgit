@@ -22,6 +22,7 @@ type
     TrackBar1: TTrackBar;
     Label2: TLabel;
     Timer1: TTimer;
+    edtQuery: TEdit;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -95,14 +96,14 @@ begin
          'LEFT JOIN taggings ON taggings.tag_id=tags.id '+
          'LEFT JOIN fileinfos on fileinfos.id=taggings.taggable_id AND taggings.taggable_type="Fileinfo" '+
          'WHERE tags.name in ("'+
-          AssembleItWell(tags,'","')+
+          UTF8Encode(AssembleItWell(tags,'","'))+
          '") '+
          'GROUP BY fileinfos.id';
   if match_all then
   begin
     query := query+' HAVING count(distinct tags.id)='+inttostr(tags.count);
   end;
-  Label1.caption:=query;
+  edtQuery.text:=query;
   sltb := slDb.GetTable(query);
   result:=sltb;
 end;
@@ -161,7 +162,7 @@ begin
     end;
   joinCondition:='';
   having:='';
-  if ItemsForSelectedTags<>nil then
+  if (ItemsForSelectedTags<>nil) and (ItemsForSelectedTags.count>0) then
   begin
     taggable_ids:=getCommaListOf('id',itemsForSelectedTags,'');
 //    alert('taggable_ids = '+taggable_ids);
@@ -171,7 +172,7 @@ begin
       joinCondition:=' AND 1=2 '; // unmögliche Bedingung
     tagnames:=quoteConcatStrList(selectedTags);
 //    alert('tagnames = '+tagnames);
-//    having:=' HAVING tags.name NOT IN ('+tagnames+') ';
+//    having:=' HAVING tags.name NOT IN ('+UTF8Encode(tagnames)+') ';
   end;
   query:='SELECT name, id, anz '+
     'FROM '+
@@ -346,7 +347,8 @@ begin
       end;
     lastLabel:=tag;
   end;
-  TagCloud.Height:=lastLabel.Top+h+rowPadding;
+  if lastLabel<>nil then
+    TagCloud.Height:=lastLabel.Top+h+rowPadding;
 end;
 
 

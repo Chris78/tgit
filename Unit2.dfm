@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 48
-  Top = 10
+  Left = 82
+  Top = 228
   Width = 1559
   Height = 873
   Caption = 'Tgit GUI'
@@ -97,6 +97,14 @@ object Form1: TForm1
     TickStyle = tsAuto
     OnChange = TrackBar1Change
   end
+  object edtQuery: TEdit
+    Left = 8
+    Top = 624
+    Width = 697
+    Height = 21
+    TabOrder = 6
+    Text = 'edtQuery'
+  end
   object DCP_sha256: TDCP_sha256
     Id = 28
     Algorithm = 'SHA256'
@@ -106,7 +114,7 @@ object Form1: TForm1
   end
   object Timer1: TTimer
     Enabled = False
-    Interval = 10
+    Interval = 1
     OnTimer = Timer1Timer
     Left = 1512
     Top = 40
