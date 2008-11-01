@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, SQLiteTable3, ComCtrls, Grids, StringItWell,
   DCPcrypt2, DCPsha256, Math, TabNotBk, ExtCtrls, Menus, Hashes, Contnrs,
-  UFileinfo, UFileLocation, GraphicEx, jpeg;
+  ExtDlgs, UFileinfo, UFileLocation, GraphicEx, jpeg, ShellAPI;
 
 type
   TByteArray = Array of Byte;
@@ -70,8 +70,8 @@ type
     PanelTab1: TPanel;
     StringGrid2: TStringGrid;
     PanelTab2: TPanel;
-    Button5: TButton;
-    Button6: TButton;
+    ButtonBack: TButton;
+    ButtonNext: TButton;
     PanelPreviews: TPanel;
 
     procedure FormCreate(Sender: TObject);
@@ -100,8 +100,8 @@ type
     procedure N71Click(Sender: TObject);
     procedure N81Click(Sender: TObject);
     procedure TabControl1Change(Sender: TObject);
-    procedure Button5Click(Sender: TObject);
-    procedure Button6Click(Sender: TObject);
+    procedure ButtonBackClick(Sender: TObject);
+    procedure ButtonNextClick(Sender: TObject);
 
   private
     { Private declarations }
@@ -148,6 +148,8 @@ type
     procedure clearPreviews;
     function DoLoad(var img:TImage;const FileName: String):Boolean;
     procedure renderPreview(fl:TFileLocation);
+    function LoadImage(var img: TImage; Name : string):Boolean;
+    procedure previewDblClick(Sender:TObject);
   public
     { Public declarations }
   end;
@@ -158,6 +160,8 @@ var
 implementation
 
 {$R *.dfm}
+
+uses FreeImage;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
@@ -325,8 +329,11 @@ begin
   img.Hint:=fl.full_path;
   img.center:=true;
   img.ShowHint:=true;
-  if not DoLoad(img, fl.full_path) then
-  DoLoad(img,ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
+  img.OnDblClick:=previewDblClick;
+//  if not DoLoad(img, fl.full_path) then
+//  DoLoad(img,ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
+  if not LoadImage(img, fl.full_path) then
+    LoadImage(img,ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
 end;
 
 procedure TForm1.arrangePreviews();
@@ -374,6 +381,7 @@ begin
       cur.Top:=t;
     end;
     cur.Show;
+    application.ProcessMessages;
     last:=cur;
   end;
 end;
@@ -512,11 +520,17 @@ end;
 // EventHandling für dynamisch erzeugte TagLabels:
 procedure TForm1.tagClick(Sender:TObject);
 begin
+  pageNo:=1;
+  ButtonBack.enabled:=false;
   clickedTagName:=TLabel(Sender).caption;
   clickedTagWasActive:=(TLabel(Sender).tag=1);
   Timer1.Enabled:=true;
 end;
 
+procedure TForm1.previewDblClick(Sender:TObject);
+begin
+  ShellExecute(Handle, 'open', PChar(TImage(Sender).hint), nil, nil, SW_SHOW);
+end;
 procedure TForm1.selectTag(tag:String);
 begin
   if selectedTags.indexOf(tag)=-1 then
@@ -897,7 +911,8 @@ begin
       if fileExists(fpath) then
         begin
           found:=true;
-          DoLoad(Image1,fpath);
+          //DoLoad(Image1,fpath);
+          LoadImage(Image1,fpath);
         end
       else
         i:=i+1;
@@ -988,17 +1003,92 @@ begin
   end;
 end;
 
-procedure TForm1.Button5Click(Sender: TObject);
+procedure TForm1.ButtonBackClick(Sender: TObject);
 begin
 dec(pageNo);
 updatePreviews;
+if(pageNo<=1) then ButtonBack.Enabled:=false;
 end;
 
-procedure TForm1.Button6Click(Sender: TObject);
+procedure TForm1.ButtonNextClick(Sender: TObject);
 begin
 inc(pageNo);
 updatePreviews;
+if(pageNo>1) then ButtonBack.Enabled:=true;
 end;
+
+
+// Experiment:
+
+function TForm1.LoadImage(var img: TImage; Name : string):Boolean;
+var
+  dib : PFIBITMAP;
+  PBH : PBITMAPINFOHEADER;
+  PBI : PBITMAPINFO;
+  t : FREE_IMAGE_FORMAT;
+  Ext : string;
+  BM : TBitmap;
+  x, y : integer;
+  BP : PLONGWORD;
+  DC : HDC;
+begin
+ result:=true;
+  try
+    t := FreeImage_GetFileType(PChar(Name), 16);
+
+    if t = FIF_UNKNOWN then
+    begin
+      // Check for types not supported by GetFileType
+      Ext := UpperCase(ExtractFileExt(Name));
+      if (Ext = '.TGA') or(Ext = '.TARGA') then
+        t := FIF_TARGA
+      else if Ext = '.MNG' then
+        t := FIF_MNG
+      else if Ext = '.PCD' then
+        t := FIF_PCD
+      else if Ext = '.WBMP' then
+        t := FIF_WBMP
+      else if Ext = '.CUT' then
+        t := FIF_CUT
+      else
+        raise Exception.Create('The file "' + Name + '" cannot be displayed because SFM does not recognise the file type.');
+    end;
+
+    dib := FreeImage_Load(t, PChar(name), 0);
+    if Dib = nil then
+      Close;
+    PBH := FreeImage_GetInfoHeader(dib);
+    PBI := FreeImage_GetInfo(dib^);
+
+    begin
+      BM := TBitmap.Create;
+
+      BM.Assign(nil);
+      DC := GetDC(Handle);
+
+      BM.handle := CreateDIBitmap(DC,
+        PBH^,
+        CBM_INIT,
+        PChar(FreeImage_GetBits(dib)),
+        PBI^,
+        DIB_RGB_COLORS);
+
+      Img.picture.Bitmap.Assign(BM);
+      BM.Free;
+      ReleaseDC(Handle, DC);
+    end;
+    FreeImage_Unload(dib);
+  except
+    result:=false;
+//    on e:exception do
+//    begin
+//      Application.BringToFront;
+//      MessageDlg(e.message, mtInformation, [mbOK], 0);
+//      Close;
+//    end;
+  end;
+end;
+
 
 end.
 

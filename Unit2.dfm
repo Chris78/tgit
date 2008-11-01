@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 219
-  Top = 153
+  Left = 270
+  Top = 92
   Width = 1559
   Height = 873
   Caption = 'Tgit GUI'
@@ -22,7 +22,7 @@ object Form1: TForm1
   TextHeight = 13
   object Label1: TLabel
     Left = 8
-    Top = 608
+    Top = 784
     Width = 32
     Height = 13
     Caption = 'Label1'
@@ -35,7 +35,7 @@ object Form1: TForm1
     Caption = 'Limit Tags:'
   end
   object Image1: TImage
-    Left = 8
+    Left = 424
     Top = 656
     Width = 281
     Height = 169
@@ -54,7 +54,7 @@ object Form1: TForm1
   object TagCloud: TGroupBox
     Left = 744
     Top = 32
-    Width = 801
+    Width = 793
     Height = 786
     Anchors = [akLeft, akTop, akRight]
     Caption = 'TagCloud'
@@ -99,7 +99,7 @@ object Form1: TForm1
   end
   object edtQuery: TEdit
     Left = 8
-    Top = 624
+    Top = 800
     Width = 697
     Height = 21
     TabOrder = 5
@@ -125,9 +125,10 @@ object Form1: TForm1
   end
   object TabControl1: TTabControl
     Left = 8
-    Top = 64
+    Top = 56
     Width = 729
-    Height = 545
+    Height = 689
+    Anchors = [akLeft, akTop, akBottom]
     MultiLine = True
     TabOrder = 8
     TabPosition = tpRight
@@ -140,7 +141,7 @@ object Form1: TForm1
       Left = 4
       Top = 4
       Width = 702
-      Height = 537
+      Height = 681
       Align = alClient
       TabOrder = 0
       Visible = False
@@ -148,7 +149,7 @@ object Form1: TForm1
         Left = 1
         Top = 1
         Width = 700
-        Height = 535
+        Height = 679
         Align = alClient
         DefaultColWidth = 180
         DefaultRowHeight = 16
@@ -161,37 +162,39 @@ object Form1: TForm1
       Left = 4
       Top = 4
       Width = 702
-      Height = 537
+      Height = 681
       Align = alClient
       TabOrder = 1
       DesignSize = (
         702
-        537)
-      object Button5: TButton
-        Left = 16
-        Top = 504
+        681)
+      object ButtonBack: TButton
+        Left = 240
+        Top = 648
         Width = 89
         Height = 25
+        Anchors = [akLeft, akBottom]
         Caption = 'Seite zur'#252'ck'
         Enabled = False
         TabOrder = 0
-        OnClick = Button5Click
+        OnClick = ButtonBackClick
       end
-      object Button6: TButton
-        Left = 600
-        Top = 504
-        Width = 75
+      object ButtonNext: TButton
+        Left = 360
+        Top = 648
+        Width = 89
         Height = 25
+        Anchors = [akRight, akBottom]
         Caption = 'Seite vor'
         TabOrder = 1
-        OnClick = Button6Click
+        OnClick = ButtonNextClick
       end
       object PanelPreviews: TPanel
-        Left = -8
-        Top = -1
+        Left = -1
+        Top = 0
         Width = 710
-        Height = 502
-        Anchors = [akLeft, akTop, akRight, akBottom]
+        Height = 643
+        Anchors = [akLeft, akTop, akBottom]
         TabOrder = 2
       end
     end
