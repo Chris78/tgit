@@ -6,7 +6,15 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, SQLiteTable3, ComCtrls, Grids, StringItWell,
   DCPcrypt2, DCPsha256, Math, TabNotBk, ExtCtrls, Menus, Hashes, Contnrs,
-  ExtDlgs, UFileinfo, UFileLocation, GraphicEx, jpeg, ShellAPI;
+  ExtDlgs, UFileinfo, UFileLocation, FreeBitmap,
+  //GraphicEx, jpeg,
+  ShellAPI;
+
+const
+  rowPadding=2;
+  colPadding=10;
+  marginLeft=5;
+  marginTop=15;
 
 type
   TByteArray = Array of Byte;
@@ -73,6 +81,15 @@ type
     ButtonBack: TButton;
     ButtonNext: TButton;
     PanelPreviews: TPanel;
+    PopupPreview: TPopupMenu;
+    Schlagwortendern1: TMenuItem;
+    Dateiffnen1: TMenuItem;
+    EnthaltendenOrdnerffnen1: TMenuItem;
+    Bilddrehen1: TMenuItem;
+    N90rechts1: TMenuItem;
+    N90links1: TMenuItem;
+    N1801: TMenuItem;
+    DateiausderDatenbankentfernen1: TMenuItem;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -102,6 +119,11 @@ type
     procedure TabControl1Change(Sender: TObject);
     procedure ButtonBackClick(Sender: TObject);
     procedure ButtonNextClick(Sender: TObject);
+    procedure Dateiffnen1Click(Sender: TObject);
+    procedure EnthaltendenOrdnerffnen1Click(Sender: TObject);
+    procedure N90rechts1Click(Sender: TObject);
+    procedure N90links1Click(Sender: TObject);
+    procedure N1801Click(Sender: TObject);
 
   private
     { Private declarations }
@@ -114,6 +136,7 @@ type
     maxTagCount: Integer;
     selectedTags: TStringlist;
     curFileinfos: TObjectList;
+    clickedPreview: TImage;
     clickedTagName: String;
     clickedTagWasActive: Boolean;
     picsPerCol: Integer;
@@ -124,6 +147,7 @@ type
     procedure unhighlight(Sender: TObject);
     procedure updateDocuments(limit,offset:Integer);
     procedure tagClick(Sender: TObject);
+    procedure previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure selectTag(tag:String);
     procedure unselectTag(tag:String);
     procedure ReloadTagCloud(limit:Integer);
@@ -148,7 +172,7 @@ type
     procedure clearPreviews;
     function DoLoad(var img:TImage;const FileName: String):Boolean;
     procedure renderPreview(fl:TFileLocation);
-    function LoadImage(var img: TImage; Name : string):Boolean;
+    function LoadImage(var img: TImage; Name : string; angle:Integer):Boolean;
     procedure previewDblClick(Sender:TObject);
   public
     { Public declarations }
@@ -309,13 +333,14 @@ begin
       if found then
         begin
           renderPreview(fl);
+          arrangePreviews();
+          application.processMessages;
           inc(c);
         end;
       inc(k);
     end;
     inc(i);
   end;
-  arrangePreviews;
 end;
 
 procedure TForm1.renderPreview(fl:TFileLocation);
@@ -324,16 +349,23 @@ var
   p: TPanel;
 begin
   img:=TImage.create(PanelPreviews);
+  img.stretch:=true;
+  img.Proportional:=true;
+  img.IncrementalDisplay:=true;
+  img.width:=(PanelPreviews.Width div picsPerCol)-colPadding;
+  img.height:=(PanelPreviews.height div picsPerCol)-rowPadding;
   img.hide;
   img.Parent:=PanelPreviews;
   img.Hint:=fl.full_path;
   img.center:=true;
   img.ShowHint:=true;
   img.OnDblClick:=previewDblClick;
+  img.OnContextPopup:=previewClick;
+  img.PopupMenu:=PopupPreview;
 //  if not DoLoad(img, fl.full_path) then
 //  DoLoad(img,ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
-  if not LoadImage(img, fl.full_path) then
-    LoadImage(img,ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
+  if not LoadImage(img, fl.full_path,0) then
+    LoadImage(img,ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg',0);
 end;
 
 procedure TForm1.arrangePreviews();
@@ -343,22 +375,15 @@ const
   marginLeft=5;
   marginTop=15;
 var
-  i,imgwidth,imgheight: Integer;
+  i: Integer;
   l,t,h: Integer; // left, top und height
   cur,last: TImage;
 begin
   last:=nil;
   h:=0;
-  imgwidth:=(PanelPreviews.Width div picsPerCol)-colPadding;
-  imgheight:=(PanelPreviews.height div picsPerCol)-rowPadding;
   for i:=0 to PanelPreviews.controlcount-1 do
   begin
     cur:=TImage(PanelPreviews.controls[i]);
-    // Eigenschaften für alle:
-    cur.Width:=imgwidth;
-    cur.Height:=imgheight;
-    cur.stretch:=true;
-    cur.Proportional:=true;
     // Positionierung:
     if last=nil then
     begin
@@ -525,6 +550,11 @@ begin
   clickedTagName:=TLabel(Sender).caption;
   clickedTagWasActive:=(TLabel(Sender).tag=1);
   Timer1.Enabled:=true;
+end;
+
+procedure TForm1.previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
+begin
+  clickedPreview:=TImage(Sender);
 end;
 
 procedure TForm1.previewDblClick(Sender:TObject);
@@ -766,6 +796,7 @@ var
   tag: TLabel;
 begin
   Timer1.Enabled:=false;
+  Screen.Cursor := crHourGlass;
   if clickedTagWasActive then
     unselectTag(clickedTagName)
   else
@@ -774,6 +805,7 @@ begin
   updateDocuments(picsPerCol*picsPerCol,pageNo-1);
   clearTagcloud;
   showTagCloud(GetTagcloud(0));
+  Screen.Cursor := crDefault;
 end;
 
 
@@ -912,7 +944,7 @@ begin
         begin
           found:=true;
           //DoLoad(Image1,fpath);
-          LoadImage(Image1,fpath);
+          LoadImage(Image1,fpath,0);
         end
       else
         i:=i+1;
@@ -921,74 +953,88 @@ end;
 
 // gibt bei Erfolg true zurück
 function TForm1.DoLoad(var img:TImage;const FileName: String):Boolean;
-var
-  GraphicClass: TGraphicExGraphicClass;
-  Graphic: TGraphic;
+//var
+//  GraphicClass: TGraphicExGraphicClass;
+//  Graphic: TGraphic;
 begin
-  try
-    GraphicClass := FileFormatList.GraphicFromContent(FileName);
-    if GraphicClass = nil then
-      img.Picture.LoadFromFile(FileName)
-    else
-      begin
-        Graphic := GraphicClass.Create;
-        Graphic.LoadFromFile(FileName);
-        img.Picture.Graphic := Graphic;
-      end;
-    result:=true;
-  except
-    result:=false;
-  end;
+//  try
+//    GraphicClass := FileFormatList.GraphicFromContent(FileName);
+//    if GraphicClass = nil then
+//      img.Picture.LoadFromFile(FileName)
+//    else
+//      begin
+//        Graphic := GraphicClass.Create;
+//        Graphic.LoadFromFile(FileName);
+//        img.Picture.Graphic := Graphic;
+//      end;
+//    result:=true;
+//  except
+//    result:=false;
+//  end;
 end;
 
 procedure TForm1.N11Click(Sender: TObject);
 begin
   picsPerCol:=1;
-end;
-
-procedure TForm1.N101Click(Sender: TObject);
-begin
-  picsPerCol:=10;
-end;
-
-procedure TForm1.N91Click(Sender: TObject);
-begin
-  picsPerCol:=9;
+  TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N21Click(Sender: TObject);
 begin
   picsPerCol:=2;
+  TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N31Click(Sender: TObject);
 begin
   picsPerCol:=3;
+  TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N41Click(Sender: TObject);
 begin
   picsPerCol:=4;
+  TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N51Click(Sender: TObject);
 begin
   picsPerCol:=5;
+  TMenuItem(Sender).Checked:=true;
 end;
 
 procedure TForm1.N61Click(Sender: TObject);
 begin
   picsPerCol:=6;
+  TMenuItem(Sender).Checked:=true;
 end;
 
 procedure TForm1.N71Click(Sender: TObject);
 begin
   picsPerCol:=7;
+  TMenuItem(Sender).Checked:=true;
 end;
 
 procedure TForm1.N81Click(Sender: TObject);
 begin
   picsPerCol:=8;
+  TMenuItem(Sender).Checked:=true;
+end;
+
+procedure TForm1.N91Click(Sender: TObject);
+begin
+  picsPerCol:=9;
+  TMenuItem(Sender).Checked:=true;
+end;
+
+procedure TForm1.N101Click(Sender: TObject);
+begin
+  picsPerCol:=10;
+  TMenuItem(Sender).Checked:=true;
 end;
 
 procedure TForm1.TabControl1Change(Sender: TObject);
@@ -1017,12 +1063,9 @@ updatePreviews;
 if(pageNo>1) then ButtonBack.Enabled:=true;
 end;
 
-
-// Experiment:
-
-function TForm1.LoadImage(var img: TImage; Name : string):Boolean;
+function TForm1.LoadImage(var img: TImage; Name : string; angle: Integer):Boolean;
 var
-  dib : PFIBITMAP;
+  dib,dib2,tmp : PFIBITMAP;
   PBH : PBITMAPINFOHEADER;
   PBI : PBITMAPINFO;
   t : FREE_IMAGE_FORMAT;
@@ -1054,7 +1097,18 @@ begin
         raise Exception.Create('The file "' + Name + '" cannot be displayed because SFM does not recognise the file type.');
     end;
 
-    dib := FreeImage_Load(t, PChar(name), 0);
+  dib := FreeImage_Load(t, PChar(name), 0);
+  tmp:=dib;
+  dib2 := FreeImage_MakeThumbnail(dib,img.Width);
+  dib:=dib2;
+  FreeImage_unload(tmp);
+
+  tmp:=dib;
+  dib2 := FreeImage_RotateClassic(dib,angle);
+  dib:=dib2;
+  FreeImage_unload(tmp);
+
+
     if Dib = nil then
       Close;
     PBH := FreeImage_GetInfoHeader(dib);
@@ -1089,6 +1143,69 @@ begin
   end;
 end;
 
+
+procedure TForm1.Dateiffnen1Click(Sender: TObject);
+begin
+  previewDblClick(clickedPreview);
+end;
+
+procedure TForm1.EnthaltendenOrdnerffnen1Click(Sender: TObject);
+var
+  path:string;
+begin
+  path:=ExtractFilepath(clickedPreview.Hint);
+  ShellExecute(Handle, 'open', PChar(path), nil, nil, SW_SHOW);
+end;
+
+//procedure TForm1.N90rechts1Click(Sender: TObject);
+//var
+//  BM: TBitmap;
+//  i,j : Integer;
+//  P   : PByteArray;
+//  Arr : Array of Array of Byte;
+//begin
+//  BM:=TBitmap.create;
+//  BM.width:=clickedPreview.Picture.Bitmap.height;
+//  BM.height:=clickedPreview.Picture.Bitmap.width;
+//  setlength(Arr,clickedPreview.Picture.Bitmap.height);
+//  for i:=0 to clickedPreview.Picture.Bitmap.height-1 do
+//  begin
+//    setlength(Arr[i],clickedPreview.Picture.Bitmap.width);
+//    P:=clickedPreview.Picture.Bitmap.scanline[i];
+//    for j:=0 to clickedPreview.Picture.Bitmap.width-1 do
+//      begin
+//        setlength(Arr,clickedPreview.Picture.Bitmap.height);
+//        Arr[i][j]:=P[j];
+//      end;
+//  end;
+//
+//  for i:=0 to BM.height-1 do
+//    for j:=0 to BM.width-1 do
+//      begin
+//        P := BM.ScanLine[i];
+//        P[j] := Arr[j][i];
+//      end;
+//
+//  clickedPreview.Picture.Bitmap:=BM;
+//end;
+
+procedure TForm1.N90rechts1Click(Sender: TObject);
+begin
+  clickedPreview.Tag:=((90+ClickedPreview.tag) mod 360);
+  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.Tag);
+end;
+
+procedure TForm1.N90links1Click(Sender: TObject);
+begin
+  clickedPreview.Tag:=((270+clickedPreview.tag) mod 360);
+  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.Tag);
+end;
+
+procedure TForm1.N1801Click(Sender: TObject);
+begin
+  clickedPreview.Tag:=((180+clickedPreview.tag) mod 360);
+  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.tag);
+end;
 
 end.
 
