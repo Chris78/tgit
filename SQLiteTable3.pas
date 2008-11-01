@@ -67,7 +67,7 @@ uses
   {$IFDEF WIN32}
   Windows,
   {$ENDIF}
-  SQLite3, Classes, SysUtils;
+  SQLite3, Classes, SysUtils, Hashes;
 
 const
 
@@ -116,7 +116,7 @@ type
     procedure SetSynchronised(Value: boolean);
     procedure DoQuery(value: string); 
   public
-    constructor Create(const FileName: string);
+    constructor Create(FileName: string);
     destructor Destroy; override;
     function GetTable(const SQL: Ansistring): TSQLiteTable; overload;
     function GetTable(const SQL: Ansistring; const Bindings: array of const): TSQLiteTable; overload;
@@ -186,6 +186,7 @@ type
     function FieldIsNull(I: cardinal): boolean;
     function FieldAsString(I: cardinal): string;
     function FieldAsDouble(I: cardinal): double;
+    function GetRow(): THash;
     function Next: boolean;
     function Previous: boolean;
     property EOF: boolean read GetEOF;
@@ -269,7 +270,7 @@ end;
 // TSQLiteDatabase
 //------------------------------------------------------------------------------
 
-constructor TSQLiteDatabase.Create(const FileName: string);
+constructor TSQLiteDatabase.Create(FileName: string);
 var
   Msg: PAnsiChar;
   iResult: integer;
@@ -1231,6 +1232,16 @@ begin
         Result := pDouble(self.fResults[(self.frow * self.fColCount) + I])^
       else
         raise ESqliteException.Create('Not an integer or numeric field');
+end;
+
+function TSqliteTable.GetRow(): THash;
+var i: Integer;
+begin
+  result:=THash.Create;
+  if EOF then
+    raise ESqliteException.Create('Table is at End of File');
+  for i:=0 to self.ColCount-1 do
+    result.SetString(self.columns[i],self.FieldAsString(i));
 end;
 
 function TSqliteTable.FieldAsString(I: cardinal): string;
