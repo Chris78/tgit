@@ -5,7 +5,8 @@ uses
   Unit2 in 'Unit2.pas' {Form1},
   StringItWell in 'StringItWell.pas',
   UFileinfo in 'UFileinfo.pas',
-  UFileLocation in 'UFileLocation.pas';
+  UFileLocation in 'UFileLocation.pas',
+  UJPGStreamFix in 'UJPGStreamFix.pas';
 
 {$R *.res}
 

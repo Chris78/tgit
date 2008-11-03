@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 59
-  Top = 78
+  Left = 32
+  Top = 62
   Width = 1559
   Height = 873
   Caption = 'Tgit GUI'
@@ -10,6 +10,35 @@ object Form1: TForm1
   Font.Height = -11
   Font.Name = 'MS Sans Serif'
   Font.Style = []
+  Icon.Data = {
+    0000010001001010000001001800680300001600000028000000100000002000
+    000001001800000000000000000048000000480000000000000000000000C1BC
+    A7E9E2C9F8EDCEFAECC8FCEEC7FCEFC7FCEEC7FBEEC8FBEEC8FBEEC8FBEEC8FB
+    EEC8FBEEC8FBEEC8FBEEC8FBEEC87C7868665F4CCEC4ABF8EDCBFAEEC8FAEFC7
+    FAEFC7FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8C5BE
+    A4312B14918A72F9EBCBFEEEC7FDEDC8FBEDC9FBEEC8FBEEC8FBEEC8FBEEC8FB
+    EEC8FBEEC8FBEEC8FBEEC8FBEEC8F3E9CE5C5540D3CBB5FBECCDFFEDC6FEEEC8
+    FBEEC9FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8EFE4
+    CA615845847B69F9E8CEFFEDC8FDEFC6FAEEC8FBEEC8FBEEC8FBEEC8FBEEC8FB
+    EEC8FBEEC8FBEEC8FBEEC8FBEEC8F3E7CD5E54445A4E41ECDAC6FFEDCBFAEEC5
+    F9EFC7FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8F8EB
+    CD62564555473FCCB9ABFAE8CBF8EEC8F8EFC8FBEEC8FBEEC8FBEEC8FBEEC8FB
+    EEC8FBEEC8FBEEC8FBEEC8FBEEC8F8EDC9998D7B47373286716AE2CFBAF9EDCB
+    F7EEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FBEEC8FAF0
+    C7D5CAB442322D57413DA99686EADCC0F6EBC8FBEDC9FBEDC9FCEEC8FCEEC8FC
+    EEC8FBEEC8FBEEC8FCEEC8FBEEC8F8F0C4F5ECCB675B4E4733375A3F44997C74
+    D8C2AEDCCDB6E0CFB5A08C70DBC9AAFAEBCBFAEECDFBEBC9FBEBC9FCEDCAFAF0
+    C8F6EEC8BFB6A0332422493338593E3C5E4B3FA69E8CDBD2BFC0B49E67593FBA
+    AE93EBE1C5F8E9CCF4E4C9EDDDC4F9EDC7F8F0C8EEE9C7655C4D302220463436
+    503C3A533F386E5851A188806E554B523A2E5F483A6C5A49715F4F796758FDED
+    CDF9F0C5F4F1C5CDCAAE362E262A1E223D292E4B2D3355353D55343C55343B56
+    34385131314C353248362ECDBDAFFDECCBFAEFC5F6F1C4F0EDCD7A746727201D
+    261E1E271E202B2127342933392D3633262B332526301E1A827167F7E9D3FDED
+    CAFAEFC6F7EFC6F4ECCD8B85742D281B2B2B1B23281B1E241B1C211E1C201C21
+    221A2D2B1D958876EADDC4F7EDC9FBEDCAFBEFC7F9EFC7DED3B7493F2D928D79
+    D6D2B7D9D2B7A39D88827B6C847C6DBEB49FE0D3B8F6EBC9F6EEC6F5EFC20000
+    0000000000000000000000000000000000000000000000000000000000000000
+    000000000000000000000000000000000000000000000000000000000000}
   Menu = MainMenu1
   OldCreateOrder = False
   OnCreate = FormCreate
@@ -35,13 +64,20 @@ object Form1: TForm1
     Caption = 'Limit Tags:'
   end
   object Image1: TImage
-    Left = 424
+    Left = 352
     Top = 656
     Width = 281
     Height = 169
     Center = True
     Proportional = True
     Stretch = True
+  end
+  object Label3: TLabel
+    Left = 753
+    Top = 43
+    Width = 52
+    Height = 13
+    Caption = 'Filter Tags:'
   end
   object edtSelectedTags: TEdit
     Left = 8
@@ -52,10 +88,10 @@ object Form1: TForm1
     OnChange = edtSelectedTagsChange
   end
   object TagCloud: TGroupBox
-    Left = 744
-    Top = 32
+    Left = 752
+    Top = 64
     Width = 793
-    Height = 786
+    Height = 754
     Anchors = [akLeft, akTop, akRight]
     Caption = 'TagCloud'
     TabOrder = 1
@@ -102,6 +138,7 @@ object Form1: TForm1
     Top = 800
     Width = 697
     Height = 21
+    Anchors = [akLeft, akBottom]
     TabOrder = 5
     Text = 'edtQuery'
   end
@@ -127,7 +164,7 @@ object Form1: TForm1
     Left = 8
     Top = 56
     Width = 729
-    Height = 689
+    Height = 585
     Anchors = [akLeft, akTop, akBottom]
     MultiLine = True
     TabOrder = 8
@@ -141,7 +178,7 @@ object Form1: TForm1
       Left = 4
       Top = 4
       Width = 702
-      Height = 681
+      Height = 577
       Align = alClient
       TabOrder = 0
       Visible = False
@@ -149,7 +186,7 @@ object Form1: TForm1
         Left = 1
         Top = 1
         Width = 700
-        Height = 679
+        Height = 575
         Align = alClient
         DefaultColWidth = 180
         DefaultRowHeight = 16
@@ -162,15 +199,15 @@ object Form1: TForm1
       Left = 4
       Top = 4
       Width = 702
-      Height = 681
+      Height = 577
       Align = alClient
       TabOrder = 1
       DesignSize = (
         702
-        681)
+        577)
       object ButtonBack: TButton
         Left = 240
-        Top = 648
+        Top = 544
         Width = 89
         Height = 25
         Anchors = [akLeft, akBottom]
@@ -181,7 +218,7 @@ object Form1: TForm1
       end
       object ButtonNext: TButton
         Left = 360
-        Top = 648
+        Top = 544
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
@@ -193,11 +230,57 @@ object Form1: TForm1
         Left = -1
         Top = 0
         Width = 710
-        Height = 643
+        Height = 539
         Anchors = [akLeft, akTop, akBottom]
         TabOrder = 2
       end
     end
+  end
+  object Button4: TButton
+    Left = 312
+    Top = 32
+    Width = 89
+    Height = 25
+    Caption = 'Test JPGThumb'
+    TabOrder = 9
+  end
+  object ChkShowAccessablesOnly: TCheckBox
+    Left = 24
+    Top = 608
+    Width = 193
+    Height = 17
+    Anchors = [akLeft, akBottom]
+    Caption = 'nur zugreifbare Dateien anzeigen'
+    TabOrder = 10
+  end
+  object Button5: TButton
+    Left = 8
+    Top = 728
+    Width = 105
+    Height = 25
+    Anchors = [akLeft, akBottom]
+    Caption = 'create all Thumbs'
+    TabOrder = 11
+    OnClick = Button5Click
+  end
+  object ProgressBar1: TProgressBar
+    Left = 8
+    Top = 760
+    Width = 150
+    Height = 16
+    Anchors = [akLeft, akBottom]
+    Min = 0
+    Max = 100
+    Step = 1
+    TabOrder = 12
+  end
+  object edtTagFilter: TEdit
+    Left = 816
+    Top = 40
+    Width = 289
+    Height = 21
+    TabOrder = 13
+    OnChange = edtTagFilterChange
   end
   object DCP_sha256: TDCP_sha256
     Id = 28
@@ -309,6 +392,10 @@ object Form1: TForm1
       object Datenbankwhlen1: TMenuItem
         Caption = 'Datenbank w'#228'hlen'
         OnClick = Datenbankwhlen1Click
+      end
+      object humbDBwhlen1: TMenuItem
+        Caption = 'Thumbnail DB w'#228'hlen'
+        OnClick = humbDBwhlen1Click
       end
     end
     object Hilfe1: TMenuItem

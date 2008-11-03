@@ -2,7 +2,7 @@ unit UFileLocation;
 
 interface
 
-uses Hashes,sysutils,UFileinfo;
+uses Hashes,sysutils; //,UFileinfo;
 
 type
 
@@ -11,7 +11,7 @@ type
   public
     id,location_id: Integer;
     path,filename: String;
-    fileinfo: TFileinfo;
+//    fileinfo: TFileinfo;
     function full_path():String;
     function accessible(): Boolean;
     constructor create(fields: THash);
