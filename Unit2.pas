@@ -134,6 +134,7 @@ type
     procedure Button5Click(Sender: TObject);
     procedure humbDBwhlen1Click(Sender: TObject);
     procedure edtTagFilterChange(Sender: TObject);
+    procedure edtTagFilterKeyPress(Sender: TObject; var Key: Char);
 
   private
     { Private declarations }
@@ -885,6 +886,7 @@ begin
   updateDocuments(picsPerCol*picsPerCol,pageNo-1);
   clearTagcloud;
   showTagCloud(GetTagcloud(0));
+  edtTagFilter.text:='';
   Screen.Cursor := crDefault;
 end;
 
@@ -1366,12 +1368,52 @@ begin
   for i:=0 to TagCloud.ControlCount-1 do
     begin
       lbl:=TLabel(TagCloud.Controls[i]);
-      if (edtTagFilter.text<>'') and (pos(edtTagFilter.text,lbl.caption)=0) then
+      if (edtTagFilter.text<>'') and (pos(lowercase(edtTagFilter.text),lowercase(lbl.caption))=0) then
         lbl.hide
       else
         lbl.show;
     end;
   arrangeTagCloud;
+end;
+
+procedure TForm1.edtTagFilterKeyPress(Sender: TObject; var Key: Char);
+var
+  i: Integer;
+  a_label, exact, at_beginning, in_middle: TLabel;
+  tag,filter: string;
+begin
+  exact:=nil;
+  at_beginning:=nil;
+  in_middle:=nil;
+  if Key=Char(VK_RETURN) then
+  begin
+    filter:=lowercase(edtTagFilter.Text);
+    // exakten Match suchen (bis auf case-Sensitivity):
+    for i:=0 to TagCloud.Controlcount-1 do
+    begin
+      a_label:=TLabel(TagCloud.Controls[i]);
+      tag:=lowercase(a_label.caption);
+      if tag=filter then
+      begin
+        exact:=a_label;
+        break;
+      end
+      else
+        if (at_beginning=nil) and (pos(filter,tag)=1) then
+          at_beginning:=a_label
+        else
+          if (in_middle=nil) and (pos(filter,tag)>0) then
+            in_middle:=a_label;
+    end;
+    if exact<>nil then
+      exact.OnClick(exact)
+    else
+      if at_beginning<>nil then
+        at_beginning.OnClick(at_beginning)
+      else
+        if in_middle<>nil then
+          in_middle.OnClick(in_middle);
+  end;
 end;
 
 end.

@@ -281,6 +281,7 @@ object Form1: TForm1
     Height = 21
     TabOrder = 13
     OnChange = edtTagFilterChange
+    OnKeyPress = edtTagFilterKeyPress
   end
   object DCP_sha256: TDCP_sha256
     Id = 28
