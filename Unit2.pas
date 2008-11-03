@@ -153,6 +153,7 @@ type
     picsPerCol: Integer;
     pageNo: Integer;
     procedure openDB(promptUser:Boolean);
+    procedure openThumbDB;
     procedure loadSettingsFromIniFile();
     procedure highlight(Sender: TObject);
     procedure unhighlight(Sender: TObject);
@@ -183,7 +184,7 @@ type
     procedure clearPreviews;
     function DoLoad(var img:TImage;const FileName: String):Boolean;
     function renderPreview(fi:TFileinfo):Boolean;
-    function LoadImage(var img: TImage; Name : string; angle:Integer):Boolean;
+    function LoadImage(var img: TImage; fi : TFileinfo; angle:Integer):Boolean;
     procedure previewDblClick(Sender:TObject);
     procedure FilterTagCloud;
   public
@@ -210,12 +211,12 @@ begin
   picsPerCol:=3;
   // Settings ggf. überladen mit Einstellungen aus INI-File:
   loadSettingsFromIniFile();
-  thumbsdb := TSQLiteDatabase.Create(thumbDBPath);
   pageNo:=1;
   selectedTags:=TStringlist.create;
   selectedTags.Sorted:=true;
   curFileinfos:=TObjectList.create;
   openDB(false); // try to open DB, but don't prompt user to choose a db-file
+  openThumbDB;
 end;
 
 procedure TForm1.openDB(promptUser:Boolean);
@@ -239,6 +240,14 @@ begin
     limit := floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
     reloadTagCloud(limit);
     lastLabel:=nil;
+  end;
+end;
+procedure TForm1.openThumbDB;
+begin
+  try
+    thumbsdb := TSQLiteDatabase.Create(thumbDBPath);
+  except
+    alert('Die Thumbnail-Datenbank konnte nicht geöffnet werden.');
   end;
 end;
 
@@ -350,24 +359,6 @@ begin
       application.processMessages;
       inc(c);
     end;
-{    k:=0;
-    done:=false;
-    while not done and (k<fi.file_locations.count) do
-    begin
-      fl:=TFileLocation(fi.file_locations[k]);
-      if fl.accessible or (not ChkShowAccessablesOnly.checked) then
-        begin
-          done:=renderPreview(fl);
-          if done then
-            begin
-              arrangePreviews();
-              application.processMessages;
-              inc(c);
-            end;
-        end;
-      inc(k);
-    end;
-}
     inc(i);
   end;
 end;
@@ -377,6 +368,9 @@ var
   img: TImage;
   accessiblePath: String;
   success: Boolean;
+  tbl: TSQLiteTable;
+  data: TMemoryStream;
+  jp: TJpegImage;
 begin
   accessiblePath:=fi.getAccessibleLocation;
   if (accessiblePath='') and ChkShowAccessablesOnly.Checked then
@@ -401,13 +395,29 @@ begin
       OnContextPopup:=previewClick;
       PopupMenu:=PopupPreview;
     end;
-    // LoadImage gibt true zurück, wenn eine Vorschau ausgegeben werden konnte (Bild von Platte oder Thumb aus DB)
-    if accessiblePath<>'' then // wenn leer, dann gar nicht erst versuchen...
-      success := LoadImage(img,accessiblePath,0)
+
+    // Versuchen den Thumbnail aus der DB zu laden:
+    tbl:=thumbsdb.GetTable('SELECT data FROM thumbs WHERE fileinfo_id="'+inttostr(fi.id)+'" LIMIT 1');
+    if tbl.RowCount>0 then
+      begin
+        if not importingThumbs then
+        begin
+          data:=TMemoryStream.create;
+          data:=tbl.FieldAsBlob(tbl.FieldIndex['data']);
+          data.Seek(0,0);
+          jp:=TJPEGImage.create;
+          jp.LoadFromStream(data);
+          img.picture.assign(jp);
+          jp.free;
+          data.free;
+        end;
+      end
     else
-      success := false;
-    if not success then // Bild ist nicht-erreichbar oder nicht darstellbar.
-      LoadImage(img,ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg',0);
+      begin
+        success := LoadImage(img,fi,0);
+        if not success then // Bild ist nicht-erreichbar oder nicht darstellbar.
+          img.Picture.LoadFromFile(ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
+      end;
   end;
 end;
 
@@ -838,7 +848,7 @@ begin
   if OpenDialog1.execute then
     thumbDBPath := OpenDialog1.FileName;
   if fileExists(thumbDBPath) then
-    thumbsdb := TSQLiteDatabase.Create(thumbDBPath);
+    openThumbDB;
 end;
 
 
@@ -1006,7 +1016,7 @@ begin
         begin
           found:=true;
           //DoLoad(Image1,fpath);
-          LoadImage(Image1,fpath,0);
+          //REDO: LoadImage(Image1,fpath,0);
         end
       else
         i:=i+1;
@@ -1125,7 +1135,7 @@ updatePreviews;
 if(pageNo>1) then ButtonBack.Enabled:=true;
 end;
 
-function TForm1.LoadImage(var img: TImage; Name : string; angle: Integer):Boolean;
+function TForm1.LoadImage(var img: TImage; fi: TFileinfo; angle: Integer):Boolean;
 var
   dib,dib2,tmp : PFIBITMAP;
   PBH : PBITMAPINFOHEADER;
@@ -1137,107 +1147,97 @@ var
   jp : TJPEGImage;
   data: TMemoryStream;
   tbl: TSQLiteTable;
+  fpath: string;
 begin
   result:=true;
-  tbl:=thumbsdb.GetTable('SELECT data FROM thumbs WHERE fileinfo_id="'+Name+'" LIMIT 1');
-  if (tbl.RowCount>0) and (angle=0) then
-    begin
-      if not importingThumbs then
-      begin
-        data:=TMemoryStream.create;
-        data:=tbl.FieldAsBlob(tbl.FieldIndex['data']);
-        data.Seek(0,0);
-        jp:=TJPEGImage.create;
-        jp.LoadFromStream(data);
-        img.picture.assign(jp);
-        jp.free;
-        data.free;
-      end;  
-    end
+  fpath:=fi.getAccessibleLocation;
+  if fpath='' then
+    result:=false
   else
+  begin
+  try
+    t := FreeImage_GetFileType(PChar(fpath), 16);
+     if t = FIF_UNKNOWN then
     begin
-      try
-        t := FreeImage_GetFileType(PChar(Name), 16);
+      // Check for types not supported by GetFileType
+      Ext := UpperCase(ExtractFileExt(fpath));
+      if (Ext = '.TGA') or(Ext = '.TARGA') then
+        t := FIF_TARGA
+      else if Ext = '.MNG' then
+        t := FIF_MNG
+      else if Ext = '.PCD' then
+        t := FIF_PCD
+      else if Ext = '.WBMP' then
+        t := FIF_WBMP
+      else if Ext = '.CUT' then
+        t := FIF_CUT
+      else
+        raise Exception.Create('The file "' + fpath + '" cannot be displayed because SFM does not recognise the file type.');
+    end;
 
-        if t = FIF_UNKNOWN then
-        begin
-          // Check for types not supported by GetFileType
-          Ext := UpperCase(ExtractFileExt(Name));
-          if (Ext = '.TGA') or(Ext = '.TARGA') then
-            t := FIF_TARGA
-          else if Ext = '.MNG' then
-            t := FIF_MNG
-          else if Ext = '.PCD' then
-            t := FIF_PCD
-          else if Ext = '.WBMP' then
-            t := FIF_WBMP
-          else if Ext = '.CUT' then
-            t := FIF_CUT
-          else
-            raise Exception.Create('The file "' + Name + '" cannot be displayed because SFM does not recognise the file type.');
-        end;
+    dib := FreeImage_Load(t, PChar(fpath), 0);
+    tmp:=dib;
+    if importingThumbs then
+      dib2 := FreeImage_MakeThumbnail(dib,200)
+    else
+      dib2 := FreeImage_MakeThumbnail(dib,img.Width);
 
-        dib := FreeImage_Load(t, PChar(name), 0);
-        tmp:=dib;
-        if importingThumbs then
-          dib2 := FreeImage_MakeThumbnail(dib,200)
-        else
-          dib2 := FreeImage_MakeThumbnail(dib,img.Width);
+    dib:=dib2;
+    FreeImage_unload(tmp);
 
-        dib:=dib2;
-        FreeImage_unload(tmp);
+    tmp:=dib;
+    dib2 := FreeImage_RotateClassic(dib,angle);
+    dib:=dib2;
+    FreeImage_unload(tmp);
 
-        tmp:=dib;
-        dib2 := FreeImage_RotateClassic(dib,angle);
-        dib:=dib2;
-        FreeImage_unload(tmp);
+    if Dib = nil then
+      Close;
+    PBH := FreeImage_GetInfoHeader(dib);
+    PBI := FreeImage_GetInfo(dib^);
 
-        if Dib = nil then
-          Close;
-        PBH := FreeImage_GetInfoHeader(dib);
-        PBI := FreeImage_GetInfo(dib^);
+    begin
+      BM := TBitmap.Create;
 
-        begin
-          BM := TBitmap.Create;
+      BM.Assign(nil);
+      DC := GetDC(Handle);
 
-          BM.Assign(nil);
-          DC := GetDC(Handle);
+      BM.handle := CreateDIBitmap(DC,
+        PBH^,
+        CBM_INIT,
+        PChar(FreeImage_GetBits(dib)),
+        PBI^,
+        DIB_RGB_COLORS);
 
-          BM.handle := CreateDIBitmap(DC,
-            PBH^,
-            CBM_INIT,
-            PChar(FreeImage_GetBits(dib)),
-            PBI^,
-            DIB_RGB_COLORS);
+      Img.picture.Bitmap.Assign(BM);
 
-          Img.picture.Bitmap.Assign(BM);
-
-          // Thumb in der Datenbank speichern:
-          if true or (pos('no_disk.jpg',Name)=0) then
-          begin
-            jp:=TJPEGImage.create;
-            jp.Assign(Img.Picture.Bitmap);
-            jp.CompressionQuality:=50;
-            jp.compress;
-            data:=TMemoryStream.create;
-            jp.SaveToStream(data);
-            thumbsdb.UpdateBlob('INSERT INTO thumbs (fileinfo_id,data) VALUES ("'+Name+'", ?)',data);
-            data.Free;
-          end;
-
-          BM.Free;
-          ReleaseDC(Handle, DC);
-        end;
-        FreeImage_Unload(dib);
-      except
-        result:=false;
-//      on e:exception do
-//      begin
-//        Application.BringToFront;
-//        MessageDlg(e.message, mtInformation, [mbOK], 0);
-//        Close;
-//      end;
+      // Thumb in der Datenbank speichern:
+      // falls noch nicht vorhanden:
+      tbl:=thumbsdb.GetTable('SELECT data FROM thumbs WHERE fileinfo_id="'+inttostr(fi.id)+'" LIMIT 1');
+      if (tbl.RowCount=0) and (true or (pos('no_disk.jpg',fpath)=0)) then
+      begin
+        jp:=TJPEGImage.create;
+        jp.Assign(Img.Picture.Bitmap);
+        jp.CompressionQuality:=50;
+        jp.compress;
+        data:=TMemoryStream.create;
+        jp.SaveToStream(data);
+        thumbsdb.UpdateBlob('INSERT INTO thumbs (fileinfo_id,data) VALUES ("'+inttostr(fi.id)+'", ?)',data);
+        data.Free;
       end;
+
+      BM.Free;
+      ReleaseDC(Handle, DC);
+    end;
+    FreeImage_Unload(dib);
+  except
+    result:=false;
+//  on e:exception do
+//  begin
+//    Application.BringToFront;
+//    MessageDlg(e.message, mtInformation, [mbOK], 0);
+//    Close;
+//  end;
+  end;
   end;
 end;
 
@@ -1293,19 +1293,19 @@ end;
 procedure TForm1.N90rechts1Click(Sender: TObject);
 begin
   clickedPreview.Tag:=((90+ClickedPreview.tag) mod 360);
-  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.Tag);
+//  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.Tag);
 end;
 
 procedure TForm1.N90links1Click(Sender: TObject);
 begin
   clickedPreview.Tag:=((270+clickedPreview.tag) mod 360);
-  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.Tag);
+//  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.Tag);
 end;
 
 procedure TForm1.N1801Click(Sender: TObject);
 begin
   clickedPreview.Tag:=((180+clickedPreview.tag) mod 360);
-  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.tag);
+//  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.tag);
 end;
 
 
@@ -1340,7 +1340,10 @@ begin
     flid:=tbl.FieldAsString(idx);
     fl:=file_location_find_by_id(flid);
     if fl.accessible then
-      LoadImage(image1,fl.full_path,0);
+      begin
+        f.file_locations.Add(fl);
+        LoadImage(image1,f,0);
+      end;
     fl.Free;
     tbl.Next;
     ProgressBar1.StepIt;
