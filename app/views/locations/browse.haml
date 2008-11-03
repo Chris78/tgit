@@ -17,7 +17,6 @@
 - if @fileinfos
   %h2== Suchergebnisse:
   = render :partial=>'fileinfos/fileinfos', :locals=>{:fileinfos=>@fileinfos}
-
-%br
-= will_paginate @fileinfos
+  %br
+  = will_paginate @file_locations
 

@@ -21,9 +21,8 @@ class LocationsController < ApplicationController
     conds += params[:filter_filename].split(/\s+/).map{|x| "file_locations.filename LIKE \"%#{x}%\""} unless params[:filter_filename].blank?
     conds += params[:filter_path].split(/\s+/).map{|x| "file_locations.path LIKE \"%#{x}%\""} unless params[:filter_path].blank?
     conds << "file_locations.location_id=#{@location.id}" if @location
-    unless conds.blank?
-      @fileinfos=Fileinfo.paginate(:include=>:file_locations, :conditions=>conds.join(' AND '), :per_page=>params[:per_page]||10, :page=>params[:page])
-    end
+    @file_locations=FileLocation.paginate(:include=>:fileinfo, :conditions=>conds.join(' AND '), :per_page=>params[:per_page]||10, :page=>params[:page])
+    @fileinfos=@file_locations.map{|x| x.fileinfo}
   end
 
   private

@@ -1,7 +1,7 @@
 .message{:style=>'font-weight:bold; font-size:2em;margin-bottom:10px;'}
   = params[:message]
 - form_tag '/input', :method=>:post, :onsubmit=>"return confirm('Sind sie sicher? Stimmt die Location?');" do
-  = render :partial=>'shared/select_location', :locals=>{:locations=>@locations, :selected=>params[:location_id]}
+  = location_selector(@locations, :selected=>params[:location_id])
   %br
   %label== Dateien aus folgendem Pfad hinzufügen:
   = text_field_tag 'path'
