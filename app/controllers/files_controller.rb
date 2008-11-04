@@ -1,5 +1,15 @@
 class FilesController < ApplicationController
   def get
+    require 'sqlite3'
+    db = SQLite3::Database.new("db/tgit_thumbs.db")
+    data=nil
+    query="select data from thumbs where fileinfo_id="+params[:fileinfo_id]+' limit 1'
+    db.execute(query) do |row|
+      data=row
+    end
+    db.close
+    send_data(data) and return false if data
+
     if File.exists?(params[:path])
       send_file(params[:path], :disposition=>'inline', :content_type=>'image') and return false
     else
