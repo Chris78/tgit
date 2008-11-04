@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 32
-  Top = 62
-  Width = 1559
+  Left = 137
+  Top = 53
+  Width = 1147
   Height = 873
   Caption = 'Tgit GUI'
   Color = clBtnFace
@@ -45,7 +45,7 @@ object Form1: TForm1
   OnDestroy = FormDestroy
   OnResize = FormResize
   DesignSize = (
-    1551
+    1139
     827)
   PixelsPerInch = 96
   TextHeight = 13
@@ -57,24 +57,24 @@ object Form1: TForm1
     Caption = 'Label1'
   end
   object Label2: TLabel
-    Left = 750
-    Top = 13
+    Left = 606
+    Top = 5
     Width = 51
     Height = 13
     Caption = 'Limit Tags:'
   end
   object Image1: TImage
-    Left = 352
+    Left = 464
     Top = 656
-    Width = 281
-    Height = 169
+    Width = 241
+    Height = 145
     Center = True
     Proportional = True
     Stretch = True
   end
   object Label3: TLabel
-    Left = 753
-    Top = 43
+    Left = 609
+    Top = 35
     Width = 52
     Height = 13
     Caption = 'Filter Tags:'
@@ -88,12 +88,14 @@ object Form1: TForm1
     OnChange = edtSelectedTagsChange
   end
   object TagCloud: TGroupBox
-    Left = 752
+    Left = 588
     Top = 64
-    Width = 793
+    Width = 541
     Height = 754
-    Anchors = [akLeft, akTop, akRight]
+    Anchors = [akTop, akRight]
     Caption = 'TagCloud'
+    Constraints.MinHeight = 300
+    Constraints.MinWidth = 400
     TabOrder = 1
   end
   object CheckBox1: TCheckBox
@@ -116,9 +118,9 @@ object Form1: TForm1
     OnClick = Button1Click
   end
   object TrackBar1: TTrackBar
-    Left = 808
-    Top = 8
-    Width = 745
+    Left = 664
+    Top = 0
+    Width = 333
     Height = 25
     Anchors = [akLeft, akTop, akRight]
     Max = 30
@@ -161,11 +163,13 @@ object Form1: TForm1
     OnClick = Button3Click
   end
   object TabControl1: TTabControl
-    Left = 8
-    Top = 56
-    Width = 729
+    Left = 0
+    Top = 64
+    Width = 569
     Height = 585
     Anchors = [akLeft, akTop, akBottom]
+    Constraints.MinHeight = 300
+    Constraints.MinWidth = 400
     MultiLine = True
     TabOrder = 8
     TabPosition = tpRight
@@ -177,7 +181,7 @@ object Form1: TForm1
     object PanelTab1: TPanel
       Left = 4
       Top = 4
-      Width = 702
+      Width = 542
       Height = 577
       Align = alClient
       TabOrder = 0
@@ -185,7 +189,7 @@ object Form1: TForm1
       object StringGrid2: TStringGrid
         Left = 1
         Top = 1
-        Width = 700
+        Width = 540
         Height = 575
         Align = alClient
         DefaultColWidth = 180
@@ -198,12 +202,12 @@ object Form1: TForm1
     object PanelTab2: TPanel
       Left = 4
       Top = 4
-      Width = 702
+      Width = 542
       Height = 577
       Align = alClient
       TabOrder = 1
       DesignSize = (
-        702
+        542
         577)
       object ButtonBack: TButton
         Left = 240
@@ -217,7 +221,7 @@ object Form1: TForm1
         OnClick = ButtonBackClick
       end
       object ButtonNext: TButton
-        Left = 360
+        Left = 200
         Top = 544
         Width = 89
         Height = 25
@@ -227,12 +231,21 @@ object Form1: TForm1
         OnClick = ButtonNextClick
       end
       object PanelPreviews: TPanel
-        Left = -1
-        Top = 0
-        Width = 710
-        Height = 539
-        Anchors = [akLeft, akTop, akBottom]
+        Left = 1
+        Top = 1
+        Width = 540
+        Height = 575
+        Align = alClient
         TabOrder = 2
+      end
+      object ChkShowAccessablesOnly: TCheckBox
+        Left = 24
+        Top = 549
+        Width = 193
+        Height = 17
+        Anchors = [akLeft, akBottom]
+        Caption = 'nur zugreifbare Dateien anzeigen'
+        TabOrder = 3
       end
     end
   end
@@ -244,15 +257,6 @@ object Form1: TForm1
     Caption = 'Test JPGThumb'
     TabOrder = 9
   end
-  object ChkShowAccessablesOnly: TCheckBox
-    Left = 24
-    Top = 608
-    Width = 193
-    Height = 17
-    Anchors = [akLeft, akBottom]
-    Caption = 'nur zugreifbare Dateien anzeigen'
-    TabOrder = 10
-  end
   object Button5: TButton
     Left = 8
     Top = 728
@@ -260,7 +264,7 @@ object Form1: TForm1
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'create all Thumbs'
-    TabOrder = 11
+    TabOrder = 10
     OnClick = Button5Click
   end
   object ProgressBar1: TProgressBar
@@ -272,16 +276,31 @@ object Form1: TForm1
     Min = 0
     Max = 100
     Step = 1
-    TabOrder = 12
+    TabOrder = 11
   end
   object edtTagFilter: TEdit
-    Left = 816
-    Top = 40
+    Left = 672
+    Top = 32
     Width = 289
     Height = 21
-    TabOrder = 13
+    TabOrder = 12
     OnChange = edtTagFilterChange
     OnKeyPress = edtTagFilterKeyPress
+  end
+  object ShellTreeView1: TShellTreeView
+    Left = 208
+    Top = 656
+    Width = 249
+    Height = 145
+    ObjectTypes = [otFolders]
+    Root = 'rfDesktop'
+    UseShellImages = True
+    AutoRefresh = False
+    Indent = 19
+    ParentColor = False
+    RightClickSelect = True
+    ShowRoot = False
+    TabOrder = 13
   end
   object DCP_sha256: TDCP_sha256
     Id = 28

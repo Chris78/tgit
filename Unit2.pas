@@ -9,7 +9,7 @@ uses
   ExtDlgs, UFileinfo, UFileLocation, FreeBitmap, DBTables,
   //GraphicEx,
   jpeg,
-  ShellAPI, UJPGStreamFix;
+  ShellAPI, UJPGStreamFix, UPreview, MPlayer, ShellCtrls;
 
 const
   rowPadding=2;
@@ -92,12 +92,13 @@ type
     N1801: TMenuItem;
     DateiausderDatenbankentfernen1: TMenuItem;
     Button4: TButton;
-    ChkShowAccessablesOnly: TCheckBox;
     Button5: TButton;
     ProgressBar1: TProgressBar;
     humbDBwhlen1: TMenuItem;
     edtTagFilter: TEdit;
     Label3: TLabel;
+    ShellTreeView1: TShellTreeView;
+    ChkShowAccessablesOnly: TCheckBox;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -259,7 +260,7 @@ var
   idx: Integer;
   query,flid: String;
   tbl: TSQLiteTable;
-  h: THash;
+  h,r: THash;
   f,fi: TFileinfo;
   fl: TFileLocation;
 begin
@@ -284,7 +285,9 @@ begin
 
   while not tbl.eof do
   begin
-    f:=TFileinfo.create(tbl.GetRow);
+    r:=tbl.GetRow;
+    f:=TFileinfo.create(r);
+    r.free;
     if h.GetString(inttostr(f.id))<>'1' then
       begin
         h.SetString(inttostr(f.id),'1');
@@ -379,14 +382,14 @@ begin
   else
   begin
     result:=true;
-    img:=TImage.create(PanelPreviews);
+    img:=TPreview.create(PanelPreviews,fi);
     with img do
     begin
       hide;
       stretch:=true;
       Proportional:=true;
       center:=true;
-      IncrementalDisplay:=true;  // ???
+      //IncrementalDisplay:=true;  // ???
       width:=(PanelPreviews.Width div picsPerCol)-colPadding;
       height:=(PanelPreviews.height div picsPerCol)-rowPadding;
       Parent:=PanelPreviews;
@@ -437,7 +440,7 @@ begin
   h:=0;
   for i:=0 to PanelPreviews.controlcount-1 do
   begin
-    cur:=TImage(PanelPreviews.controls[i]);
+    cur:=TPreview(PanelPreviews.controls[i]);
     // Positionierung:
     if last=nil then
       begin
@@ -606,14 +609,14 @@ end;
 
 procedure TForm1.previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
 begin
-  clickedPreview:=TImage(Sender);
+  clickedPreview:=TPreview(Sender);
 end;
 
 procedure TForm1.previewDblClick(Sender:TObject);
 var
   fname: string;
 begin
-  fname:=TImage(Sender).hint;
+  fname:=TPreview(Sender).hint;
   if FileExists(fname) then
     ShellExecute(Handle, 'open', PChar(fname), nil, nil, SW_SHOW)
   else
@@ -783,7 +786,11 @@ end;
 
 procedure TForm1.FormResize(Sender: TObject);
 begin
+  TagCloud.width:=Form1.Width div 2 -25;
+  TabControl1.width:=Form1.Width div 2 -25;
+  TagCloud.left:=TabControl1.width+TabControl1.left+25;
   arrangeTagCloud;
+  updatePreviews;
 end;
 
 procedure TForm1.TrackBar1Change(Sender: TObject);

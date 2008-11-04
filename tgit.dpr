@@ -6,7 +6,8 @@ uses
   StringItWell in 'StringItWell.pas',
   UFileinfo in 'UFileinfo.pas',
   UFileLocation in 'UFileLocation.pas',
-  UJPGStreamFix in 'UJPGStreamFix.pas';
+  UJPGStreamFix in 'UJPGStreamFix.pas',
+  UPreview in 'UPreview.pas';
 
 {$R *.res}
 
