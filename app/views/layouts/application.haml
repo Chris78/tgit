@@ -3,10 +3,11 @@
   %head
     %meta{'http-equiv' => 'Content-Type', :content => 'text/html;charset=utf-8'}
     = stylesheet_link_tag 'tag_cloud','application'
-    = javascript_include_tag :defaults
-  %body{:style=>"margin:0px;"}
+    = javascript_include_tag :defaults, 'lowpro', 'will_auto_complete', 'prototype_fixes'
+    = javascript_include_tag "prototype", "prototype_fixes", "lowpro", "effects", "dragdrop", "controls", "application", :cache => "all"
+  %body{:style=>'margin:0px;'}
     #header{:style=>'padding-top:4px;background-color:#e6e6e6;'}
-      #header_content{:style=>"padding-left:15px;"}
+      #header_content{:style=>'padding-left:15px;'}
         = link_to 'Locations', '/locations', :class=>(params[:controller]=='locations' ? 'selected' : '')
         &bull;
         = link_to 'Dateien eintragen', '/inputs/new', :class=>(params[:controller]=='inputs' ? 'selected' : '')

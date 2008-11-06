@@ -8,4 +8,4 @@
   %br
   Tags hinzufügen:
   - form_remote_tag :url=>{:controller=>:taggings, :action=>:add, :taggable_type=>obj.class.to_s, :taggable_id=>obj.id} do
-    = text_field_tag 'tag_names'
+    = text_field_will_auto_complete(:tag, :name, '/tags/auto_complete_for_tag_name', {:id=>"ac_#{obj.class.to_s}_#{obj.id}"})

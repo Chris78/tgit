@@ -1,3 +1,5 @@
+!highlight_color = #FFFFA0
+
 body
   font-family: Helventica
 .hidden
@@ -39,3 +41,24 @@ body
 .w300
   display: block
   width: 300px
+
+.ac_results
+  :position absolute
+  :border 1px solid #555
+  :color #999
+  :background
+    :color #fffffe
+  :z-index 100
+  :padding 4px 8px
+  ul
+    :margin 0
+  li
+    :padding 4px
+    :margin 0
+    :list-style-type none
+  li.selected
+    :color #333
+    :background
+      :color= !highlight_color
+  table
+    :margin 0

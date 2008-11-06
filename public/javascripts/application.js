@@ -1,2 +1,9 @@
-// Place your application-specific JavaScript functions and classes here
-// This file is automatically included by javascript_include_tag :defaults
+function lstrip(s){
+  return s.replace(/^\s*/,'');
+}
+function rstrip(s){
+  return s.replace(/\s*$/,'');
+}
+function strip(s){
+  return lstrip(rstrip(s));
+}

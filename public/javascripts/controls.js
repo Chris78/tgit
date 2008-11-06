@@ -90,6 +90,7 @@ Autocompleter.Base = Class.create({
   },
 
   show: function() {
+    if(this.aborted) return false;
     if(Element.getStyle(this.update, 'display')=='none') this.options.onShow(this.element, this.update);
     if(!this.iefix && 
       (Prototype.Browser.IE) &&
@@ -347,9 +348,15 @@ Ajax.Autocompleter = Class.create(Autocompleter.Base, {
     this.options.onComplete    = this.onComplete.bind(this);
     this.options.defaultParams = this.options.parameters || null;
     this.url                   = url;
+    this.ajax                  = null; // Ticket #8352
+    this.aborted               = false;
   },
 
   getUpdatedChoices: function() {
+    try {                           // Ticket #8352
+      this.ajax.abort();            // Ticket #8352 (jetzt mit der in prototype_fixes.js hinzugefügten abort-Methode, die auch den Ajax.activeRequestCount um 1 vermindert.
+    } catch(e){}  	                // Ticket #8352
+
     this.startIndicator();
     
     var entry = encodeURIComponent(this.options.paramName) + '=' + 
@@ -361,7 +368,8 @@ Ajax.Autocompleter = Class.create(Autocompleter.Base, {
     if(this.options.defaultParams) 
       this.options.parameters += '&' + this.options.defaultParams;
     
-    new Ajax.Request(this.url, this.options);
+    //new Ajax.Request(this.url, this.options);            // Ticket #8352
+    this.ajax = new Ajax.Request(this.url, this.options);  // Ticket #8352
   },
 
   onComplete: function(request) {
@@ -482,6 +490,7 @@ Ajax.InPlaceEditor = Class.create({
     this.element = element = $(element);
     this.prepareOptions();
     this._controls = { };
+    element.inplaceeditor=this;
     arguments.callee.dealWithDeprecatedOptions(options); // DEPRECATION LAYER!!!
     Object.extend(this.options, options || { });
     if (!this.options.formId && this.element.id) {
@@ -549,6 +558,13 @@ Ajax.InPlaceEditor = Class.create({
     fld.name = this.options.paramName;
     fld.value = text; // No HTML breaks conversion anymore
     fld.className = 'editor_field';
+    fld.inplaceeditor=this;
+    if(Prototype.Browser.IE){
+      fld.onkeyup = function(){if(event.keyCode==Event.KEY_ESC){this.inplaceeditor.leaveEditMode();}};
+    }
+    else{
+      fld.onkeyup = function(e){if(e.keyCode==Event.KEY_ESC){this.inplaceeditor.leaveEditMode();}};
+    }
     if (this.options.submitOnBlur)
       fld.onblur = this._boundSubmitHandler;
     this._controls.editor = fld;
