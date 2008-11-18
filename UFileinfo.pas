@@ -58,18 +58,18 @@ begin
     messageDlg('FEHLER: ID ist leer',mtInformation,[mbOK],0)
   else
     begin
-      self.id:=strtoint(fields.GetString('ID'));
-      self.sha2:=UTF8Decode(fields.GetString('SHA2'));
-      self.filesize:=strtoint(fields.GetString('FILESIZE'));
-      self.file_locations:=TObjectList.create;
-      self.sldb:=DB;
+      id:=strtoint(fields.GetString('ID'));
+      sha2:=UTF8Decode(fields.GetString('SHA2'));
+      filesize:=strtoint(fields.GetString('FILESIZE'));
+      file_locations:=TObjectList.create;
+      sldb:=DB;
       if includeFileLocations then
       begin
         query:='SELECT fileinfos.*,file_locations.id AS FILE_LOCATION_ID'+
                ' FROM fileinfos'+
                ' LEFT JOIN file_locations ON fileinfos.id=file_locations.fileinfo_id '+
                ' WHERE fileinfos.id='+s1;
-         tbl := self.slDb.GetTable(query);
+         tbl := slDb.GetTable(query);
          while not tbl.eof do
          begin
            idx:=tbl.FieldIndex['FILE_LOCATION_ID'];
@@ -95,7 +95,7 @@ var
 begin
   tbl:=sldb.GetTable('SELECT * FROM file_locations WHERE id='+id+' LIMIT 1');
   if not tbl.EOF then
-    result:=TFileLocation.create(tbl.GetRow)
+    result:=TFileLocation.create(tbl.GetRow,self)
   else
     result:=nil;
 end;
@@ -134,7 +134,7 @@ end;
 
 function TFileinfo.getAlternateDriveLetter():string;
 var
-  f : TForm1;
+  f : TFrmMain;
 begin
 //redo?  f:=TForm1(self.mainform);
 //       result:=f.caption;

@@ -1,6 +1,6 @@
-object Form1: TForm1
-  Left = 273
-  Top = 115
+object FrmMain: TFrmMain
+  Left = 223
+  Top = 111
   Width = 1147
   Height = 873
   Caption = 'Tgit GUI'
@@ -41,6 +41,7 @@ object Form1: TForm1
     000000000000000000000000000000000000000000000000000000000000}
   Menu = MainMenu1
   OldCreateOrder = False
+  WindowState = wsMaximized
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnResize = FormResize
@@ -57,7 +58,7 @@ object Form1: TForm1
     Anchors = [akLeft, akBottom]
     Caption = 'Label1'
   end
-  object Label2: TLabel
+  object lblLimitTags: TLabel
     Left = 606
     Top = 5
     Width = 51
@@ -74,7 +75,7 @@ object Form1: TForm1
     Proportional = True
     Stretch = True
   end
-  object Label3: TLabel
+  object lblFilterTags: TLabel
     Left = 609
     Top = 35
     Width = 52
@@ -107,7 +108,7 @@ object Form1: TForm1
     Constraints.MinWidth = 400
     TabOrder = 1
   end
-  object CheckBox1: TCheckBox
+  object chkMatchAll: TCheckBox
     Left = 496
     Top = 10
     Width = 73
@@ -244,8 +245,6 @@ object Form1: TForm1
         Top = 1
         Width = 540
         Height = 536
-        Align = alTop
-        Anchors = [akLeft, akTop, akRight, akBottom]
         TabOrder = 2
       end
       object ChkShowAccessablesOnly: TCheckBox
@@ -267,7 +266,7 @@ object Form1: TForm1
     Caption = 'Test JPGThumb'
     TabOrder = 9
   end
-  object Button5: TButton
+  object btnCreateAllThumbs: TButton
     Left = 8
     Top = 728
     Width = 105
@@ -275,9 +274,9 @@ object Form1: TForm1
     Anchors = [akLeft, akBottom]
     Caption = 'create all Thumbs'
     TabOrder = 10
-    OnClick = Button5Click
+    OnClick = btnCreateAllThumbsClick
   end
-  object ProgressBar1: TProgressBar
+  object ProgressThumbCreate: TProgressBar
     Left = 8
     Top = 760
     Width = 105
