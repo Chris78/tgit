@@ -1,15 +1,22 @@
+{
+ verfügbare Laufwerke herausfinden:
+ * DWORD GetLogicalDrives()
+ * DWORD GetLogicalDriveStrings( DWORD nBufferLength, LPTSTR lpBuffer )
+ * UINT GetDriveType( LPCTSTR lpRootPathName )
+}
+
 unit Unit2;
- {$OPTIMIZATION OFF}
+// {$ O PTIMIZATION OFF}
 interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, SQLiteTable3, ComCtrls, Grids, StringItWell,
   DCPcrypt2, DCPsha256, Math, TabNotBk, ExtCtrls, Menus, Hashes, Contnrs,
-  ExtDlgs, UFileinfo, UFileLocation, FreeBitmap, DBTables,
+  ExtDlgs, UFileinfo, UFileLocation, ULocation, FreeBitmap, DBTables,
   //GraphicEx,
   jpeg,
-  ShellAPI, UJPGStreamFix, UPreview, MPlayer, ShellCtrls;
+  ShellAPI, UJPGStreamFix, UPreview, MPlayer, ShellCtrls, IdGlobal;
 
 const
   rowPadding=2;
@@ -18,10 +25,14 @@ const
   marginTop=15;
 
 type
+
   TByteArray = Array of Byte;
+  TCharArray = Array of Char;
   TIntegerArray = Array of Integer;
   TFileinfos = Array of TFileinfo;
+  TLocations = Array of TLocation;
   TFileLocations = Array of TFileLocation;
+  TFunctionPtr = function : String of Object;
   TSQLParams = record
     select : string;
     from   : string;
@@ -97,9 +108,12 @@ type
     humbDBwhlen1: TMenuItem;
     edtTagFilter: TEdit;
     Label3: TLabel;
-    ShellTreeView1: TShellTreeView;
     ChkShowAccessablesOnly: TCheckBox;
-
+    Button6: TButton;
+    CDROMwhlen1: TMenuItem;
+    Button7: TButton;
+    LaufwerksbuchstabefrUSBGerte1: TMenuItem;
+    Label4: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure edtSelectedTagsChange(Sender: TObject);
@@ -110,7 +124,7 @@ type
     procedure Datenbankwhlen1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
-    function  fileinfo_find(id:Integer; params:TSQLParams):TObjectList;
+//    function  fileinfo_find(id:Integer; params:TSQLParams):TObjectList;
     function file_location_find_by_id(id:String):TFileLocation;
     procedure StringGrid2SelectCell(Sender: TObject; ACol, ARow: Integer;
       var CanSelect: Boolean);
@@ -136,6 +150,20 @@ type
     procedure humbDBwhlen1Click(Sender: TObject);
     procedure edtTagFilterChange(Sender: TObject);
     procedure edtTagFilterKeyPress(Sender: TObject; var Key: Char);
+    function getDriveLetters(): TCharArray;
+    function getDriveTypeOf(drv:char):string;
+    function getDrivesOfType(typ:Cardinal) : TCharArray;
+    procedure selectCDROM(Sender: TObject);
+    procedure selectUSB(Sender: TObject);
+
+    procedure makeDriveLetterMenus;
+    procedure Button6Click(Sender: TObject);
+    procedure Button7Click(Sender: TObject);
+    procedure Button10Click(Sender: TObject);
+    procedure hinzufgen2Click(Sender: TObject);
+    procedure ShellTreeView1DblClick(Sender: TObject);
+    procedure BtnAddFilesClick(Sender: TObject);
+    procedure cmbLocationChange(Sender: TObject);
 
   private
     { Private declarations }
@@ -143,7 +171,6 @@ type
     slDBPath, thumbDBPath: String;
     sldb, thumbsdb: TSQLiteDatabase;
     sltb: TSQLiteTable;
-//    ItemsForSelectedTags: TSQLIteTable;
     ItemsForSelectedTags: TObjectList;
     lastLabel: TLabel;
     maxTagCount: Integer;
@@ -154,6 +181,8 @@ type
     clickedTagWasActive: Boolean;
     picsPerCol: Integer;
     pageNo: Integer;
+    selectedCDROMDrive: String;
+    selectedUSBDrive: String;
     procedure openDB(promptUser:Boolean);
     procedure openThumbDB;
     procedure loadSettingsFromIniFile();
@@ -165,12 +194,9 @@ type
     procedure selectTag(tag:String);
     procedure unselectTag(tag:String);
     procedure ReloadTagCloud(limit:Integer);
-//    procedure showFileinfos(sltb: TSQLiteTable);
     procedure showFileinfos(fis: TObjectList);
     function  GetTagCloud(limit:Integer): TSQLIteTable;
-//    function  GetItemsFor(tags: TStringList; match_all:Boolean): TSQLIteTable;
     function  GetItemsFor(tags: TStringList; match_all:Boolean; limit,offset:Integer): TObjectList;
-    procedure GetFileinfosFor(Sender: TObject);
     procedure renderTag(tag_item,tag_count:String;i:Integer);
     procedure showTagcloud(tags:TSQLIteTable);
     procedure clearTagcloud;
@@ -189,13 +215,18 @@ type
     function LoadImage(var img: TImage; fi : TFileinfo; angle:Integer):Boolean;
     procedure previewDblClick(Sender:TObject);
     procedure FilterTagCloud;
+    function getSelectedLocationId(): Integer;
+    procedure AddPathToTgit(location_id: Integer; path: String; includeSubfolders:Boolean;initialTags:String);
+    procedure AddFileToTgit(location_id: Integer; path,fname: String; initialTags:String);
   public
     { Public declarations }
+     getCDROM : TFunctionPtr;
+     locations : TLocations;
   end;
 
 var
   Form1: TForm1;
-
+  getCDROM : function(): String;
 implementation
 
 {$R *.dfm}
@@ -219,11 +250,12 @@ begin
   curFileinfos:=TObjectList.create;
   openDB(false); // try to open DB, but don't prompt user to choose a db-file
   openThumbDB;
+  makeDriveLetterMenus();
 end;
 
 procedure TForm1.openDB(promptUser:Boolean);
 var
-  limit: Integer;
+  limit, i: Integer;
 begin
   Form1.Caption:='Tgit GUI';
   if not FileExists(slDBPath) and promptUser then
@@ -242,6 +274,10 @@ begin
     limit := floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
     reloadTagCloud(limit);
     lastLabel:=nil;
+    locations:=TLocations(TLocation.all(sldb));
+    cmbLocation.Clear;
+    for i:=0 to length(locations)-1 do
+      cmbLocation.Items.Add(locations[i].name);
   end;
 end;
 procedure TForm1.openThumbDB;
@@ -286,18 +322,13 @@ begin
   while not tbl.eof do
   begin
     r:=tbl.GetRow;
-    f:=TFileinfo.create(r);
+    f:=TFileinfo.create(r,sldb,false);
     r.free;
     if h.GetString(inttostr(f.id))<>'1' then
       begin
         h.SetString(inttostr(f.id),'1');
         curFileinfos.add(f);
       end;
-    idx:=tbl.FieldIndex['FILE_LOCATION_ID'];
-    flid:=tbl.FieldAsString(idx);
-    fl:=file_location_find_by_id(flid);
-    fi:=TFileinfo(curFileinfos.Items[curFileinfos.Count-1]);
-    fi.file_locations.add(fl);
     tbl.Next;
   end;
   h.free;
@@ -376,7 +407,7 @@ var
   data: TMemoryStream;
   jp: TJpegImage;
 begin
-  accessiblePath:=fi.getAccessibleLocation;
+  accessiblePath:=fi.getAccessibleLocation(selectedCDROMDrive,selectedUSBDrive);
   if (accessiblePath='') and ChkShowAccessablesOnly.Checked then
     result:=false  // Falls das Bild nicht erreichbar ist und nicht-erreichbare nicht ausgegeben werden sollen
   else
@@ -872,13 +903,6 @@ begin
   writeln(f,thumbdbpath);
   writeln(f,inttostr(picsPerCol));
   closeFile(f);
-  //try
-  //sltb.free;
-  //except
-  //end;
-  //sldb.free;
-  //clearTagCloud;
-
 end;
 
 procedure TForm1.Timer1Timer(Sender: TObject);
@@ -914,90 +938,6 @@ begin
 end;
 
 
-procedure TForm1.GetFileinfosFor(Sender: TObject);
-var
-  a: TObjectList;
-  i,j: Integer;
-  fi: TFileinfo;
-  fl: TFileLocation;
-const
-  params : TSQLParams = (conditions:'1=1';limit: 1000); // nur ein Beispiel und nur als Konstante, weil man Records anscheinend nur SO in einer Zeile definieren kann... :/
-begin
-  a:=fileinfo_find(0,params);
-  StringGrid2.RowCount:=a.count;
-  for i:=0 to a.Count-1 do
-    begin
-      Stringgrid2.Cells[0,i+1]:=inttostr(TFileinfo(a.Items[i]).id);
-      Stringgrid2.Cells[1,i+1]:=TFileinfo(a.Items[i]).sha2;
-      Stringgrid2.Cells[2,i+1]:=inttostr(TFileinfo(a.Items[i]).filesize);
-      fi:=TFileinfo(a.Items[i]);
-      for j:=0 to fi.file_locations.Count-1 do
-        begin
-          fl:=TFileLocation(fi.file_locations[j]);
-          StringGrid2.ColCount:=max(3+j,StringGrid2.ColCount);
-          Stringgrid2.Cells[3+j,i+1]:=fl.full_path;
-        end;
-    end;
-  a.free;
-end;
-
-// simuliert die Klassen-Methode zum finden einer Fileinfo inkl. ihrer assoziierten FileLocations: 
-function TForm1.fileinfo_find(id:Integer; params:TSQLParams):TObjectList;
-var
-  tbl : TSQLiteTable;
-  query,select,joins,conditions,group_by,having,order,limit,offset: String;
-  h: THash;
-  f,fi: TFileinfo;
-  fl: TFileLocation;
-  flid: string;
-begin
-  //result:=TObjectList.create;
-  curFileinfos.Clear;
-  query:='';
-  select:=params.select;
-  if select='' then select:='fileinfos.*,file_locations.id AS file_location_id';
-  joins:=params.joins;
-  // Filelocations eager loaden:
-  joins:=joins+' LEFT JOIN file_locations ON fileinfos.id=file_locations.fileinfo_id ';
-  if id>0 then
-    conditions:='fileinfos.id='+inttostr(id)
-  else
-    conditions:=params.conditions;
-  if conditions<>'' then conditions:='WHERE '+conditions;
-  group_by:=params.group_by;
-  if group_by<>'' then group_by:='GROUP BY '+group_by;
-  having:=params.having;
-  if having<>'' then having:='HAVING '+having;
-  limit:=inttostr(params.limit);
-  order:=params.order;
-  if order<>'' then order:='ORDER '+order;
-  if limit<>'0' then limit:='LIMIT '+limit;
-  offset:=inttostr(params.offset);
-  if offset<>'0' then limit:='LIMIT '+offset+','+inttostr(params.limit);
-  query:='SELECT '+select+' FROM fileinfos '+joins+' '+group_by+' '+conditions+' '+having+' '+limit;
-//alert(query);
-  tbl:=sldb.GetTable(query);
-  h:=THash.create;
-  while not tbl.eof do
-  begin
-    f:=TFileinfo.create(tbl.GetRow);
-    if h.GetString(inttostr(f.id))<>'1' then
-      begin
-        h.SetString(inttostr(f.id),'1');
-        curFileinfos.add(f);
-      end
-    else  // kann doch sonst weg oder?!
-      f.Free;
-    flid:=tbl.FieldAsString(tbl.FieldIndex['FILE_LOCATION_ID']);
-    fl:=file_location_find_by_id(flid);
-    fi:=TFileinfo(curFileinfos.Items[curFileinfos.Count-1]);
-    fi.file_locations.add(fl);
-    tbl.Next;
-  end;
-  h.free;
-  result:=curFileinfos;
-end;
-
 function TForm1.file_location_find_by_id(id:String):TFileLocation;
 var
   tbl: TSQLiteTable;
@@ -1024,7 +964,6 @@ begin
       if fileExists(fpath) then
         begin
           found:=true;
-          //DoLoad(Image1,fpath);
           //REDO: LoadImage(Image1,fpath,0);
         end
       else
@@ -1034,24 +973,7 @@ end;
 
 // gibt bei Erfolg true zurück
 function TForm1.DoLoad(var img:TImage;const FileName: String):Boolean;
-//var
-//  GraphicClass: TGraphicExGraphicClass;
-//  Graphic: TGraphic;
 begin
-//  try
-//    GraphicClass := FileFormatList.GraphicFromContent(FileName);
-//    if GraphicClass = nil then
-//      img.Picture.LoadFromFile(FileName)
-//    else
-//      begin
-//        Graphic := GraphicClass.Create;
-//        Graphic.LoadFromFile(FileName);
-//        img.Picture.Graphic := Graphic;
-//      end;
-//    result:=true;
-//  except
-//    result:=false;
-//  end;
 end;
 
 procedure TForm1.N11Click(Sender: TObject);
@@ -1086,36 +1008,42 @@ procedure TForm1.N51Click(Sender: TObject);
 begin
   picsPerCol:=5;
   TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N61Click(Sender: TObject);
 begin
   picsPerCol:=6;
   TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N71Click(Sender: TObject);
 begin
   picsPerCol:=7;
   TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N81Click(Sender: TObject);
 begin
   picsPerCol:=8;
   TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N91Click(Sender: TObject);
 begin
   picsPerCol:=9;
   TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.N101Click(Sender: TObject);
 begin
   picsPerCol:=10;
   TMenuItem(Sender).Checked:=true;
+  updatePreviews;
 end;
 
 procedure TForm1.TabControl1Change(Sender: TObject);
@@ -1159,7 +1087,7 @@ var
   fpath: string;
 begin
   result:=true;
-  fpath:=fi.getAccessibleLocation;
+  fpath:=fi.getAccessibleLocation(selectedCDROMDrive,selectedUSBDrive);
   if fpath='' then
     result:=false
   else
@@ -1267,38 +1195,6 @@ begin
     alert('Dieser Ordner ist auf diesem Computer nicht verfügbar.');
 end;
 
-//procedure TForm1.N90rechts1Click(Sender: TObject);
-//var
-//  BM: TBitmap;
-//  i,j : Integer;
-//  P   : PByteArray;
-//  Arr : Array of Array of Byte;
-//begin
-//  BM:=TBitmap.create;
-//  BM.width:=clickedPreview.Picture.Bitmap.height;
-//  BM.height:=clickedPreview.Picture.Bitmap.width;
-//  setlength(Arr,clickedPreview.Picture.Bitmap.height);
-//  for i:=0 to clickedPreview.Picture.Bitmap.height-1 do
-//  begin
-//    setlength(Arr[i],clickedPreview.Picture.Bitmap.width);
-//    P:=clickedPreview.Picture.Bitmap.scanline[i];
-//    for j:=0 to clickedPreview.Picture.Bitmap.width-1 do
-//      begin
-//        setlength(Arr,clickedPreview.Picture.Bitmap.height);
-//        Arr[i][j]:=P[j];
-//      end;
-//  end;
-//
-//  for i:=0 to BM.height-1 do
-//    for j:=0 to BM.width-1 do
-//      begin
-//        P := BM.ScanLine[i];
-//        P[j] := Arr[j][i];
-//      end;
-//
-//  clickedPreview.Picture.Bitmap:=BM;
-//end;
-
 procedure TForm1.N90rechts1Click(Sender: TObject);
 begin
   clickedPreview.Tag:=((90+ClickedPreview.tag) mod 360);
@@ -1317,21 +1213,18 @@ begin
 //  LoadImage(clickedPreview,clickedPreview.Hint,-clickedPreview.tag);
 end;
 
-
-
-
-
 procedure TForm1.Button5Click(Sender: TObject);
 var
   query,flid: String;
-  h: THash;
+  h,row: THash;
   tbl: TSQLiteTable;
   f:TFileinfo;
   idx: Integer;
   fl: TFileLocation;
 begin
   importingThumbs:=true;
-  query:='SELECT fileinfos.*,file_locations.id AS FILE_LOCATION_ID FROM fileinfos'+
+  query:='SELECT fileinfos.*,file_locations.id AS FILE_LOCATION_ID'+
+         ' FROM fileinfos'+
          ' LEFT JOIN file_locations ON fileinfos.id=file_locations.fileinfo_id';
   tbl := slDb.GetTable(query);
   h:=THash.create;
@@ -1339,21 +1232,16 @@ begin
   ProgressBar1.max:=tbl.RowCount;
   while not tbl.eof do
   begin
-    f:=TFileinfo.create(tbl.GetRow);
+    row:=tbl.GetRow;
+    f:=TFileinfo.create(row,sldb,true);
+    row.free;
     if h.GetString(inttostr(f.id))<>'1' then
       begin
         h.SetString(inttostr(f.id),'1');
         curFileinfos.add(f);
       end;
-    idx:=tbl.FieldIndex['FILE_LOCATION_ID'];
-    flid:=tbl.FieldAsString(idx);
-    fl:=file_location_find_by_id(flid);
-    if fl.accessible then
-      begin
-        f.file_locations.Add(fl);
-        LoadImage(image1,f,0);
-      end;
-    fl.Free;
+    if f.getAccessibleLocation(selectedCDROMDrive, selectedUSBDrive)<>''
+    then LoadImage(image1,f,0);
     tbl.Next;
     ProgressBar1.StepIt;
     application.ProcessMessages;
@@ -1421,6 +1309,251 @@ begin
         if in_middle<>nil then
           in_middle.OnClick(in_middle);
   end;
+end;
+
+function TForm1.getDriveLetters(): TCharArray;
+var
+  i,j,bits : integer;
+const
+  abc='abcdefghijklmnopqrstuvwxyz';
+begin
+  j:=0;
+  bits := getLogicalDrives();
+  for i:=1 to 26 do
+  begin
+    if inttobin(bits)[32-i+1]='1'
+    then begin
+           setlength(result,length(result)+1);
+           result[length(result)-1]:=abc[i];
+         end;
+  end;
+end;
+
+function TForm1.getDriveTypeOf(drv:Char):string;
+var
+ s: string;
+begin
+{
+0	The drive type cannot be determined.
+1	The root directory does not exist.
+DRIVE_REMOVABLE	The drive can be removed from the drive.
+DRIVE_FIXED	The disk cannot be removed from the drive.
+DRIVE_REMOTE	The drive is a remote (network) drive.
+DRIVE_CDROM	The drive is a CD-ROM drive.
+DRIVE_RAMDISK	The drive is a RAM disk.
+}
+  s:=drv+':';
+  case GetDriveType(PChar(s)) of
+  0 : result:='unknown type';
+  1 : result:='root dir does not exist';
+  DRIVE_REMOVABLE  : result:='removable drive';
+  DRIVE_FIXED      : result:='harddisk';
+  DRIVE_REMOTE     : result:='network drive';
+  DRIVE_CDROM      : result:='CD-ROM';
+  DRIVE_RAMDISK	   : result:='RAM disk'
+  else
+    result:='very unknown type';
+  end;
+end;
+
+
+function TForm1.getDrivesOfType(typ:Cardinal) : TCharArray;
+var
+ s: string;
+ arr: TCharArray;
+ i: integer;
+begin
+  arr:=getDriveLetters;
+  for i:=0 to length(arr)-1 do
+  begin
+    s:=arr[i]+':';
+    if GetDriveType(PChar(s)) = typ then
+      begin
+        setlength(result,length(result)+1);
+        result[length(result)-1]:=arr[i];
+      end;
+  end;
+end;
+
+
+procedure TForm1.Button6Click(Sender: TObject);
+  var
+    arr: TCharArray;
+    i: integer;
+begin
+  arr:=getDriveLetters;
+//  arr:=getDrivesOfType(CDROM_DRIVE);
+  for i:=0 to length(arr)-1 do
+    edtQuery.text:=edtQuery.text+',   '+arr[i]+':\ ('+getDriveTypeOf(arr[i])+')';
+end;
+
+
+procedure TForm1.makeDriveLetterMenus;
+  var
+    arr: TCharArray;
+    i,k: integer;
+    t: TMenuItem;
+    s:string;
+    typs: Array[0..1] of Cardinal;
+begin
+  typs[0]:=DRIVE_CDROM;
+  typs[1]:=666;
+  for k:=0 to length(typs)-1 do
+    begin
+      if typs[k]=666 then
+        arr:=getDriveLetters
+      else
+        arr:=getDrivesOfType(typs[k]);
+      for i:=0 to length(arr)-1 do
+        begin
+          t:=TMenuItem.Create(MainMenu1);
+          with t do
+            begin
+              Caption:=arr[i]+':\';
+              GroupIndex:=2;
+              RadioItem:=true;
+              if typs[k]=DRIVE_CDROM then
+                OnClick:=selectCDROM
+              else
+                if typs[k]=666 then OnClick:=selectUSB;
+            end;
+          Mainmenu1.Items[3].Items[2+k].add(t);
+        end;
+    end;
+end;
+
+procedure TForm1.selectCDROM(Sender: TObject);
+var
+  m: TMenuItem;
+begin
+  m:=TMenuItem(Sender);
+  m.checked:=true;
+  selectedCDROMDrive:=copy(m.caption,2,length(m.Caption)-1);
+end;
+
+procedure TForm1.selectUSB(Sender: TObject);
+var
+  m: TMenuItem;
+begin
+  m:=TMenuItem(Sender);
+  m.checked:=true;
+  selectedUSBDrive:=copy(m.caption,2,length(m.Caption)-1);
+end;
+
+procedure TForm1.Button7Click(Sender: TObject);
+begin
+  alert(TPreview(PanelTab2.Controls[0]).fileinfo.getAlternateDriveLetter);
+end;
+
+
+procedure TForm1.Button10Click(Sender: TObject);
+begin
+  PanelAddFiles.Hide();
+  edtInitialTags.Text:='';
+end;
+
+procedure TForm1.hinzufgen2Click(Sender: TObject);
+begin
+if PanelAddFiles.visible then
+  alert(ShellTreeView1.SelectedFolder.PathName)
+else
+  PanelAddFiles.show();
+end;
+
+procedure TForm1.ShellTreeView1DblClick(Sender: TObject);
+var
+  fname: String;
+begin
+  fname:=ShellTreeView1.selectedFolder.PathName;
+  if FileExists(fname) then
+    ShellExecute(Handle, 'open', PChar(fname), nil, nil, SW_SHOW)
+end;
+
+procedure TForm1.BtnAddFilesClick(Sender: TObject);
+var
+  location_id: Integer;
+  path:String;
+begin
+  path:=ShellTreeView1.SelectedFolder.PathName;
+  location_id:=getSelectedLocationId();
+  AddPathToTgit(location_id,path,chkSubfolders.checked,edtInitialTags.text);
+end;
+
+function TForm1.getSelectedLocationId(): Integer;
+begin
+end;
+
+procedure TForm1.AddPathToTgit(location_id: Integer; path: String; includeSubfolders:Boolean;initialTags:String);
+var
+  strl: TStringList;
+  fname,p: string;
+  r: TSearchRec;
+  eod: Integer; // end of directory
+  h: THash;
+begin
+  try
+    if FileExists(path) then
+      begin
+        strl:=split(path,'\');
+        fname:=strl.strings[strl.count-1];
+        strl.Delete(strl.Count-1);
+        path:=AssembleItWell(strl,'\');
+//        Fileinfo.add_file(location,path,filename,opts)
+        AddFileToTgit(location_id,path,fname,initialTags);
+      end
+    else
+      h:=THash.create;
+      if DirectoryExists(path) then
+        begin
+          eod:=FindFirst(path,faAnyFile,r);
+          while eod=0 do
+            begin
+//              h:=
+//              Fileinfo.dbcreate(h);
+            end;
+//        d=Dir.open(path)
+//        while d2=d.read
+//          next if d2=='.' || d2=='..'
+//          if File.directory?(File.join(d.path,d2))
+//            Fileinfo.add_path(location,File.join(d.path,d2),opts) if opts[:include_subdirs]
+//          else
+//            if File.file?(File.join(d.path,d2))
+//              Fileinfo.add_file(location,d.path,d2,opts)
+//            end
+//          end
+//        end
+//        return true
+//          findclose;
+        end;
+      h.free;
+  finally
+//    findclose;
+    h.Free;
+  end
+end;
+
+procedure TForm1.AddFileToTgit(location_id: Integer; path,fname: String; initialTags:String);
+begin
+//    path_file=File.join(path,filename)
+//    f=File.open(path_file,'rb')
+//    s=Digest::SHA2.hexdigest(f.read)
+//    f.close
+//    inf=Fileinfo.find_or_create_by_sha2_and_filesize(s, File.size(path_file))
+//    unless opts[:tag_list].blank?
+//      inf.tag_list="#{inf.tag_list.blank? ? '' : inf.tag_list.join(', ')+', '}#{opts[:tag_list]}"
+//      inf.save
+//    end
+//    filename=Iconv.iconv('utf-8','iso-8859-1',filename).first
+//    path=Iconv.iconv('utf-8','iso-8859-1',path).first
+//    FileLocation.find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(inf.id,location.id,path,filename) if inf
+//  end
+end;
+
+
+
+procedure TForm1.cmbLocationChange(Sender: TObject);
+begin
+//  lblLocationDescription.Caption:=cmbLocation.description;
 end;
 
 end.

@@ -2,9 +2,11 @@ unit UFileinfo;
 
 interface
 
-uses Hashes,sysutils,Contnrs, UFileLocation, Dialogs;
+uses Hashes,sysutils,Contnrs, UFileLocation, Dialogs, Forms, SQLiteTable3;
 
 type
+  TFunctionPtr = function : String of Object;
+
   TFileinfo = class(TObject)
 
   public
@@ -12,10 +14,19 @@ type
     sha2: String;
     filesize: Integer;
     file_locations: TObjectList;
+    sldb: TSQLiteDatabase;
+    getCDROM : TFunctionPtr;
+    alternateDriveLetter: Pointer; // Es kann sein, dass eine CD in Laufwerk d: lag als sie indiziert wurde, aber nun in Laufwerk e: liegt!
+    alternateHTTPHost,alternateHTTPPath: String;
+
     //preview: TImage;
-    constructor create(fields: THash);
+    constructor create(fields: THash; db: TSQLiteDatabase; includeFileLocations: Boolean);
     function getAttr(name:String):String;
-    function getAccessibleLocation: String;
+    function file_location_find_by_id(id:String):TFileLocation;
+    function getAccessibleLocation(CDROMDriveLetter,UsbStickLetter:string): String;
+    function getAlternateDriveLetter():string;
+    function setDriveLetter(letter,path:string):string;
+
     function getTags():TObjectList;
 
     function addTagNames(tags:string) : Boolean;
@@ -27,27 +38,48 @@ type
     function addTagID(tag_id:integer) : Boolean;
     function removeTagIDs(tag_ids:string) : Boolean;
     function removeTagID(tag_id:integer) : Boolean;
-
-
   end;
 
 implementation
 
-constructor TFileinfo.create(fields: THash);
+uses Unit2;
+
+constructor TFileinfo.create(fields: THash; db: TSQLiteDatabase; includeFileLocations: Boolean);
 var
-  s1,s2,s3: String;
+  s1,s2,s3,query,flid: String;
+  tbl: TSQLiteTable;
+  idx: Integer;
+  fl: TFileLocation;
 begin
-s1:=fields.GetString('ID');
-s2:=fields.GetString('SHA2');
-s3:=fields.GetString('FILESIZE');
-if s1='' then   messageDlg('FEHLER: ID ist leer',mtInformation,[mbOK],0)
-else
-begin
-  self.id:=strtoint(fields.GetString('ID'));
-  self.sha2:=UTF8Decode(fields.GetString('SHA2'));
-  self.filesize:=strtoint(fields.GetString('FILESIZE'));
-  self.file_locations:=TObjectList.create;
-end;  
+  s1:=fields.GetString('ID');
+  s2:=fields.GetString('SHA2');
+  s3:=fields.GetString('FILESIZE');
+  if s1='' then
+    messageDlg('FEHLER: ID ist leer',mtInformation,[mbOK],0)
+  else
+    begin
+      self.id:=strtoint(fields.GetString('ID'));
+      self.sha2:=UTF8Decode(fields.GetString('SHA2'));
+      self.filesize:=strtoint(fields.GetString('FILESIZE'));
+      self.file_locations:=TObjectList.create;
+      self.sldb:=DB;
+      if includeFileLocations then
+      begin
+        query:='SELECT fileinfos.*,file_locations.id AS FILE_LOCATION_ID'+
+               ' FROM fileinfos'+
+               ' LEFT JOIN file_locations ON fileinfos.id=file_locations.fileinfo_id '+
+               ' WHERE fileinfos.id='+s1;
+         tbl := self.slDb.GetTable(query);
+         while not tbl.eof do
+         begin
+           idx:=tbl.FieldIndex['FILE_LOCATION_ID'];
+           flid:=tbl.FieldAsString(idx);
+           fl:=file_location_find_by_id(flid);
+           self.file_locations.Add(fl);
+           tbl.next;
+         end;
+       end;  
+    end;
 end;
 
 function TFileinfo.getAttr(name:String):String;
@@ -57,18 +89,56 @@ begin
   else if name='filesize' then result:=inttostr(self.filesize);
 end;
 
-function TFileinfo.getAccessibleLocation: String;
+function TFileinfo.file_location_find_by_id(id:String):TFileLocation;
+var
+  tbl: TSQLiteTable;
+begin
+  tbl:=sldb.GetTable('SELECT * FROM file_locations WHERE id='+id+' LIMIT 1');
+  if not tbl.EOF then
+    result:=TFileLocation.create(tbl.GetRow)
+  else
+    result:=nil;
+end;
+
+function TFileinfo.getAccessibleLocation(CDROMDriveLetter,UsbStickLetter:string): String;
 var
   i: integer;
+  fl: TFileLocation;
+  path: String;
 begin
   result:='';
   i:=0;
   while (result='') and (i<self.file_locations.count) do
     begin
-      if TFileLocation(self.file_locations[i]).accessible
-      then result:=TFileLocation(self.file_locations[i]).full_path;
+      fl:=TFileLocation(self.file_locations[i]);
+//      if fl.location.location_type='CdRom' then
+//        path:=setDriveLetter(CDROMDriveLetter, fl.full_path)
+//      else
+//        if fl.location.location_type='UsbStick' then
+          path:=setDriveLetter(USBStickLetter, fl.full_path);
+//        else
+//          path:=fl.full_path;
+      if FileExists(path) then
+        result:=path;
       inc(i);
     end;
+end;
+
+function TFileinfo.setDriveLetter(letter,path:string):string;
+var i:integer;
+begin
+  for i:=0 to length(letter)-1 do
+    path[i]:=letter[i];
+  result:=path;  
+end;
+
+function TFileinfo.getAlternateDriveLetter():string;
+var
+  f : TForm1;
+begin
+//redo?  f:=TForm1(self.mainform);
+//       result:=f.caption;
+  getCDROM();
 end;
 
 function TFileinfo.getTags():TObjectList;
@@ -108,5 +178,7 @@ end;
 function TFileinfo.removeTagID(tag_id:integer) : Boolean;
 begin
 end;
+
+
 
 end.

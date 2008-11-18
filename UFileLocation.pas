@@ -2,7 +2,7 @@ unit UFileLocation;
 
 interface
 
-uses Hashes,sysutils; //,UFileinfo;
+uses Hashes,sysutils, ULocation;
 
 type
 
@@ -11,11 +11,13 @@ type
   public
     id,location_id: Integer;
     path,filename: String;
-//    fileinfo: TFileinfo;
+
+    alternateDriveLetter: String; // Es kann sein, dass eine CD in Laufwerk d: lag als sie indiziert wurde, aber nun in Laufwerk e: liegt!
+    alternateHTTPHost,alternateHTTPPath: String;
+    location: TLocation;
     function full_path():String;
     function accessible(): Boolean;
     constructor create(fields: THash);
-//    class function find_by_id(id:string):TFileLocation;
   end;
 
 implementation

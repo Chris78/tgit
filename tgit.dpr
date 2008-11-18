@@ -7,7 +7,8 @@ uses
   UFileinfo in 'UFileinfo.pas',
   UFileLocation in 'UFileLocation.pas',
   UJPGStreamFix in 'UJPGStreamFix.pas',
-  UPreview in 'UPreview.pas';
+  UPreview in 'UPreview.pas',
+  ULocation in 'ULocation.pas';
 
 {$R *.res}
 

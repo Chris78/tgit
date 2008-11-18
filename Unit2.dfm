@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 137
-  Top = 53
+  Left = 273
+  Top = 115
   Width = 1147
   Height = 873
   Caption = 'Tgit GUI'
@@ -54,6 +54,7 @@ object Form1: TForm1
     Top = 784
     Width = 32
     Height = 13
+    Anchors = [akLeft, akBottom]
     Caption = 'Label1'
   end
   object Label2: TLabel
@@ -64,10 +65,11 @@ object Form1: TForm1
     Caption = 'Limit Tags:'
   end
   object Image1: TImage
-    Left = 464
+    Left = 357
     Top = 656
-    Width = 241
+    Width = 228
     Height = 145
+    Anchors = [akLeft, akBottom]
     Center = True
     Proportional = True
     Stretch = True
@@ -78,6 +80,13 @@ object Form1: TForm1
     Width = 52
     Height = 13
     Caption = 'Filter Tags:'
+  end
+  object Label4: TLabel
+    Left = 16
+    Top = 696
+    Width = 6
+    Height = 13
+    Caption = '0'
   end
   object edtSelectedTags: TEdit
     Left = 8
@@ -137,7 +146,7 @@ object Form1: TForm1
   end
   object edtQuery: TEdit
     Left = 8
-    Top = 800
+    Top = 805
     Width = 697
     Height = 21
     Anchors = [akLeft, akBottom]
@@ -210,18 +219,18 @@ object Form1: TForm1
         542
         577)
       object ButtonBack: TButton
-        Left = 240
+        Left = 320
         Top = 544
         Width = 89
         Height = 25
-        Anchors = [akLeft, akBottom]
+        Anchors = [akRight, akBottom]
         Caption = 'Seite zur'#252'ck'
         Enabled = False
         TabOrder = 0
         OnClick = ButtonBackClick
       end
       object ButtonNext: TButton
-        Left = 200
+        Left = 424
         Top = 544
         Width = 89
         Height = 25
@@ -234,14 +243,15 @@ object Form1: TForm1
         Left = 1
         Top = 1
         Width = 540
-        Height = 575
-        Align = alClient
+        Height = 536
+        Align = alTop
+        Anchors = [akLeft, akTop, akRight, akBottom]
         TabOrder = 2
       end
       object ChkShowAccessablesOnly: TCheckBox
-        Left = 24
+        Left = 8
         Top = 549
-        Width = 193
+        Width = 177
         Height = 17
         Anchors = [akLeft, akBottom]
         Caption = 'nur zugreifbare Dateien anzeigen'
@@ -270,7 +280,7 @@ object Form1: TForm1
   object ProgressBar1: TProgressBar
     Left = 8
     Top = 760
-    Width = 150
+    Width = 105
     Height = 16
     Anchors = [akLeft, akBottom]
     Min = 0
@@ -287,20 +297,24 @@ object Form1: TForm1
     OnChange = edtTagFilterChange
     OnKeyPress = edtTagFilterKeyPress
   end
-  object ShellTreeView1: TShellTreeView
-    Left = 208
-    Top = 656
-    Width = 249
-    Height = 145
-    ObjectTypes = [otFolders]
-    Root = 'rfDesktop'
-    UseShellImages = True
-    AutoRefresh = False
-    Indent = 19
-    ParentColor = False
-    RightClickSelect = True
-    ShowRoot = False
+  object Button6: TButton
+    Left = 408
+    Top = 32
+    Width = 75
+    Height = 25
+    Caption = 'Drives?'
     TabOrder = 13
+    OnClick = Button6Click
+  end
+  object Button7: TButton
+    Left = 8
+    Top = 656
+    Width = 89
+    Height = 25
+    Anchors = [akLeft, akBottom]
+    Caption = 'Fileinfo.CDROM'
+    TabOrder = 14
+    OnClick = Button7Click
   end
   object DCP_sha256: TDCP_sha256
     Id = 28
@@ -330,6 +344,7 @@ object Form1: TForm1
       Caption = 'Dateien'
       object hinzufgen2: TMenuItem
         Caption = 'hinzuf'#252'gen'
+        OnClick = hinzufgen2Click
       end
       object agSuche1: TMenuItem
         Caption = 'suchen'
@@ -416,6 +431,12 @@ object Form1: TForm1
       object humbDBwhlen1: TMenuItem
         Caption = 'Thumbnail DB w'#228'hlen'
         OnClick = humbDBwhlen1Click
+      end
+      object CDROMwhlen1: TMenuItem
+        Caption = 'CD ROM w'#228'hlen (f'#252'r "CD Locations")'
+      end
+      object LaufwerksbuchstabefrUSBGerte1: TMenuItem
+        Caption = 'Laufwerksbuchstabe f'#252'r USB Ger'#228'te'
       end
     end
     object Hilfe1: TMenuItem
