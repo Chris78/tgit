@@ -202,6 +202,7 @@ var
 begin
   db.ExecSQL('INSERT INTO fileinfos (sha2,filesize) VALUES ("'+sha2+'","'+inttostr(fsize)+'")');
   id:=db.GetLastInsertRowID;
+  result:=TFileinfo.db_find(db,id);
 end;
 
 class function TFileinfo.db_find_or_create_by_sha2_and_filesize(db: TSQLiteDatabase; sha2:string; fsize:integer):TFileinfo;
@@ -213,7 +214,7 @@ begin
     result:=TFileinfo.create(tbl.getRow,db,true);
   end
   else begin
-    result:=TFileinfo.create(tbl.getRow,db,true);
+    result:=TFileinfo.db_create(db,sha2,fsize);
   end;
 end;
 
