@@ -2,7 +2,7 @@ unit UFileinfo;
 
 interface
 
-uses Hashes,sysutils,Contnrs, UFileLocation, Dialogs, Forms, SQLiteTable3;
+uses Hashes,sysutils,Contnrs, UFileLocation, Dialogs, Forms, SQLiteTable3, UHelper;
 
 type
   TFunctionPtr = function : String of Object;
@@ -38,6 +38,9 @@ type
     function addTagID(tag_id:integer) : Boolean;
     function removeTagIDs(tag_ids:string) : Boolean;
     function removeTagID(tag_id:integer) : Boolean;
+    class function db_find(db:TSQLiteDatabase; id:integer): TFileinfo;
+    class function db_create(db: TSQLiteDatabase; sha2:string; fsize:integer): TFileinfo;
+    class function db_find_or_create_by_sha2_and_filesize(db: TSQLiteDatabase; sha2:string; fsize:integer):TFileinfo;
   end;
 
 implementation
@@ -58,9 +61,9 @@ begin
     messageDlg('FEHLER: ID ist leer',mtInformation,[mbOK],0)
   else
     begin
-      id:=strtoint(fields.GetString('ID'));
-      sha2:=UTF8Decode(fields.GetString('SHA2'));
-      filesize:=strtoint(fields.GetString('FILESIZE'));
+      id:=strtoint(s1);
+      sha2:=UTF8Decode(s2);
+      filesize:=strtoint(s3);
       file_locations:=TObjectList.create;
       sldb:=DB;
       if includeFileLocations then
@@ -68,7 +71,7 @@ begin
         query:='SELECT fileinfos.*,file_locations.id AS FILE_LOCATION_ID'+
                ' FROM fileinfos'+
                ' LEFT JOIN file_locations ON fileinfos.id=file_locations.fileinfo_id '+
-               ' WHERE fileinfos.id='+s1;
+               ' WHERE fileinfos.id='+s1+' AND FILE_LOCATION_ID!=""';
          tbl := slDb.GetTable(query);
          while not tbl.eof do
          begin
@@ -177,6 +180,41 @@ end;
 
 function TFileinfo.removeTagID(tag_id:integer) : Boolean;
 begin
+end;
+
+
+class function TFileinfo.db_find(db:TSQLiteDatabase; id:integer): TFileinfo;
+var
+  tbl: TSQLiteTable;
+begin
+  tbl:=db.GetTable('SELECT * FROM fileinfos WHERE id="'+inttostr(id)+'"');
+  if tbl.Count>0 then begin
+    result:=TFileinfo.create(tbl.getRow,db,true);
+  end
+  else begin
+    alert('Fileinfo '+inttostr(id)+' nicht gefunden!');
+  end;
+end;
+
+class function TFileinfo.db_create(db: TSQLiteDatabase; sha2:string; fsize:integer):TFileinfo;
+var
+  id: Int64;
+begin
+  db.ExecSQL('INSERT INTO fileinfos (sha2,filesize) VALUES ("'+sha2+'","'+inttostr(fsize)+'")');
+  id:=db.GetLastInsertRowID;
+end;
+
+class function TFileinfo.db_find_or_create_by_sha2_and_filesize(db: TSQLiteDatabase; sha2:string; fsize:integer):TFileinfo;
+var
+  tbl: TSQLiteTable;
+begin
+  tbl:=db.GetTable('SELECT * FROM fileinfos WHERE sha2="'+sha2+'" AND filesize="'+inttostr(fsize)+'"');
+  if tbl.Count>0 then begin
+    result:=TFileinfo.create(tbl.getRow,db,true);
+  end
+  else begin
+    result:=TFileinfo.create(tbl.getRow,db,true);
+  end;
 end;
 
 

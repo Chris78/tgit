@@ -1,6 +1,6 @@
 object FrmAddFiles: TFrmAddFiles
-  Left = 402
-  Top = 275
+  Left = 619
+  Top = 43
   Width = 800
   Height = 568
   Caption = 'Dateien zu tgit hinzuf'#252'gen'
@@ -88,8 +88,9 @@ object FrmAddFiles: TFrmAddFiles
       Anchors = [akRight, akBottom]
       Caption = 'Dateien/Ordner hinzuf'#252'gen'
       TabOrder = 4
+      OnClick = BtnAddFilesClick
     end
-    object Button10: TButton
+    object btnClose: TButton
       Left = 329
       Top = 515
       Width = 137
@@ -97,7 +98,7 @@ object FrmAddFiles: TFrmAddFiles
       Anchors = [akBottom]
       Caption = 'schlie'#223'en'
       TabOrder = 5
-      OnClick = Button10Click
+      OnClick = btnCloseClick
     end
   end
 end

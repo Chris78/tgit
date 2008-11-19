@@ -6,7 +6,7 @@
 }
 
 unit Unit2;
-// {$ O PTIMIZATION OFF}
+ {$OPTIMIZATION OFF}
 interface
 
 uses
@@ -45,11 +45,9 @@ type
     offset : integer;
   end;
   TFrmMain = class(TForm)
-    edtSelectedTags: TEdit;
     TagCloud: TGroupBox;
     chkMatchAll: TCheckBox;
     Label1: TLabel;
-    Button1: TButton;
     DCP_sha256: TDCP_sha256;
     TrackBar1: TTrackBar;
     lblLimitTags: TLabel;
@@ -116,8 +114,6 @@ type
     Label4: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure edtSelectedTagsChange(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
     procedure FormResize(Sender: TObject);
     procedure TrackBar1Change(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
@@ -168,7 +164,6 @@ type
     { Private declarations }
     importingThumbs: Boolean;
     slDBPath, thumbDBPath: String;
-    sldb, thumbsdb: TSQLiteDatabase;
     sltb: TSQLiteTable;
     ItemsForSelectedTags: TObjectList;
     lastLabel: TLabel;
@@ -185,28 +180,28 @@ type
     procedure loadSettingsFromIniFile();
     procedure highlight(Sender: TObject);
     procedure unhighlight(Sender: TObject);
+
+    procedure showFileinfos(fis: TObjectList);
+    procedure showTagcloud(tags:TSQLIteTable);
+    procedure clearTagcloud;
+    procedure arrangeTagCloud;
     procedure updateDocuments(limit,offset:Integer);
+    procedure updatePreviews;
+    procedure clearPreviews;
+    procedure arrangePreviews();
+
     procedure tagClick(Sender: TObject);
     procedure previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure selectTag(tag:String);
     procedure unselectTag(tag:String);
     procedure ReloadTagCloud(limit:Integer);
-    procedure showFileinfos(fis: TObjectList);
     function  GetTagCloud(limit:Integer): TSQLIteTable;
     function  GetItemsFor(tags: TStringList; match_all:Boolean; limit,offset:Integer): TObjectList;
     procedure renderTag(tag_item,tag_count:String;i:Integer);
-    procedure showTagcloud(tags:TSQLIteTable);
-    procedure clearTagcloud;
-    procedure arrangeTagCloud;
-    procedure arrangePreviews();
-    function  GetSha2(filename:String): String;
-    function  Sha2(s:String): String;
     function  StringToArrayOfBytes(s:String): TByteArray;
 //    procedure alert(s:String);
     function  getCommaListOf(attr:String;t:TObjectList;quot:String): String;
     function  quoteConcatStrList(s:TStringlist): string;
-    procedure updatePreviews;
-    procedure clearPreviews;
     function DoLoad(var img:TImage;const FileName: String):Boolean;
     function renderPreview(fi:TFileinfo):Boolean;
     function LoadImage(var img: TImage; fi : TFileinfo; angle:Integer):Boolean;
@@ -214,10 +209,14 @@ type
     procedure FilterTagCloud;
   public
     { Public declarations }
-     getCDROM : TFunctionPtr;
-     locations : TLocations;
-     selectedCDROMDrive: String;
-     selectedUSBDrive: String;
+    sldb, thumbsdb: TSQLiteDatabase;
+    getCDROM : TFunctionPtr;
+    locations : TLocations;
+    selectedCDROMDrive: String;
+    selectedUSBDrive: String;
+    function GetSha2(filename:String): String;
+    function GetFilesize(path_file:string): Integer;
+    function Sha2(s:String): String;
   end;
 
 var
@@ -370,7 +369,6 @@ var
   i,perPage,c,k: Integer;
   fi: TFileinfo;
   fl:TFileLocation;
-  done:boolean;
   accessiblePath: string;
 begin
   clearPreviews;
@@ -729,18 +727,6 @@ begin
     TagCloud.Height:=lastLabel.Top+h+rowPadding;
 end;
 
-procedure TFrmMain.edtSelectedTagsChange(Sender: TObject);
-begin
-Label1.Caption:='_'+strip(edtSelectedTags.text)+'_';
-end;
-
-procedure TFrmMain.Button1Click(Sender: TObject);
-var s:string;
-begin
-  s:='asdf';
-  Label1.Caption:='+'+Sha2(edtSelectedTags.text)+'+';
-end;
-
 function TFrmMain.Sha2(s:String): String;
 var
   HashDigest: array of byte;
@@ -759,6 +745,16 @@ begin
     except
       MessageDlg('An error occurred while reading the file',mtError,[mbOK],0);
     end;
+end;
+
+function TFrmMain.GetFilesize(path_file:string): Integer;
+var
+  f: File of Byte;
+begin
+  assignfile(f,path_file);
+  reset(f);
+  result:=filesize(f);
+  closefile(f);
 end;
 
 function TFrmMain.GetSha2(filename:String): String;
@@ -902,7 +898,6 @@ begin
     unselectTag(clickedTagName)
   else
     selectTag(clickedTagName);
-  edtSelectedTags.Text:=selectedTags.CommaText;
   updateDocuments(picsPerCol*picsPerCol,pageNo-1);
   clearTagcloud;
   showTagCloud(GetTagcloud(0));

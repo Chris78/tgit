@@ -4,7 +4,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ComCtrls, ShellCtrls, ExtCtrls,ShellAPI,Hashes,StringItWell;
+  Dialogs, StdCtrls, ComCtrls, ShellCtrls, ExtCtrls,ShellAPI,
+  Hashes,StringItWell,UFileinfo,ULocation,UHelper;
 
 type
   TFrmAddFiles = class(TForm)
@@ -16,21 +17,21 @@ type
     chkSubfolders: TCheckBox;
     edtInitialTags: TEdit;
     BtnAddFiles: TButton;
-    Button10: TButton;
+    btnClose: TButton;
     procedure FormCreate(Sender: TObject);
-    procedure Button10Click(Sender: TObject);
+    procedure BtnAddFilesClick(Sender: TObject);
+    procedure btnCloseClick(Sender: TObject);
+    procedure cmbLocationChange(Sender: TObject);
+    procedure ShellTreeView1DblClick(Sender: TObject);
   private
     { Private declarations }
     mainForm : TObject;
   public
     { Public declarations }
-  constructor create(Sender: TObject);
-  procedure cmbLocationChange(Sender: TObject);
-  procedure ShellTreeView1DblClick(Sender: TObject);
-  procedure BtnAddFilesClick(Sender: TObject);
-  function getSelectedLocationId(): Integer;
-  procedure AddPathToTgit(location_id: Integer; path: String; includeSubfolders:Boolean;initialTags:String);
-  procedure AddFileToTgit(location_id: Integer; path,fname: String; initialTags:String);
+  constructor create(Sender: TComponent);
+  function getSelectedLocation(): TLocation;
+  procedure AddPathToTgit(location: TLocation; path: String; includeSubfolders:Boolean;initialTags:String);
+  procedure AddFileToTgit(location: TLocation; path,fname: String; initialTags:String);
   end;
 
 var
@@ -42,11 +43,12 @@ uses
   Unit2;
 
 {$R *.dfm}
+{$OPTIMIZATION OFF}
 
-constructor TFrmAddFiles.create(Sender: TObject);
+constructor TFrmAddFiles.create(Sender: TComponent);
 begin
-  inherited create(TComponent(Sender));
   mainForm:=Sender;
+  inherited create(Sender);
 end;
 
 procedure TFrmAddFiles.cmbLocationChange(Sender: TObject);
@@ -79,73 +81,87 @@ end;
 
 procedure TFrmAddFiles.BtnAddFilesClick(Sender: TObject);
 var
-  location_id: Integer;
+  selectedLocation: TLocation;
   path:String;
 begin
-  path:=ShellTreeView1.SelectedFolder.PathName;
-  location_id:=getSelectedLocationId();
-  AddPathToTgit(location_id,path,chkSubfolders.checked,edtInitialTags.text);
+  if cmbLocation.itemindex>-1 then
+  begin
+    path:=ShellTreeView1.SelectedFolder.PathName;
+    selectedLocation:=getSelectedLocation();
+    AddPathToTgit(selectedlocation,path,chkSubfolders.checked,edtInitialTags.text);
+  end
+  else
+    alert('Bitte wählen Sie eine Location aus!');  
 end;
 
-function TFrmAddFiles.getSelectedLocationId(): Integer;
+function TFrmAddFiles.getSelectedLocation(): TLocation;
 begin
+  result:=TLocation(cmbLocation.Items.Objects[cmbLocation.itemIndex]);
 end;
 
-procedure TFrmAddFiles.AddPathToTgit(location_id: Integer; path: String; includeSubfolders:Boolean;initialTags:String);
+procedure TFrmAddFiles.AddPathToTgit(location: TLocation; path: String; includeSubfolders:Boolean;initialTags:String);
 var
   strl: TStringList;
   fname,p: string;
   r: TSearchRec;
   eod: Integer; // end of directory
-  h: THash;
 begin
   try
-    if FileExists(path) then
-      begin
+    if FileExists(path) then begin
         strl:=split(path,'\');
         fname:=strl.strings[strl.count-1];
         strl.Delete(strl.Count-1);
         path:=AssembleItWell(strl,'\');
 //        Fileinfo.add_file(location,path,filename,opts)
-        AddFileToTgit(location_id,path,fname,initialTags);
-      end
-    else
-      h:=THash.create;
-      if DirectoryExists(path) then
-        begin
-          eod:=FindFirst(path,faAnyFile,r);
-          while eod=0 do
-            begin
-//              h:=
-//              Fileinfo.dbcreate(h);
+        AddFileToTgit(location,path,fname,initialTags);
+    end
+    else begin
+      if DirectoryExists(path) then begin
+        eod:=FindFirst(path+'\*.*',faAnyFile,r);
+        while eod=0 do begin
+          if (r.name<>'.') and (r.name<>'..') then begin
+            if FileExists(path+'\'+r.Name) then begin
+              AddFileToTgit(location,path,r.Name,initialTags);
+            end
+            else begin
+              if includeSubfolders and DirectoryExists(path+'\'+r.Name) then begin
+                AddPathToTgit(location,path+'\'+r.Name,includeSubfolders,initialTags);
+              end;
             end;
-//        d=Dir.open(path)
-//        while d2=d.read
-//          next if d2=='.' || d2=='..'
-//          if File.directory?(File.join(d.path,d2))
-//            Fileinfo.add_path(location,File.join(d.path,d2),opts) if opts[:include_subdirs]
-//          else
-//            if File.file?(File.join(d.path,d2))
-//              Fileinfo.add_file(location,d.path,d2,opts)
-//            end
+          end;
+          eod:=FindNext(r);
+        end;
+//      d=Dir.open(path)
+//      while d2=d.read
+//        next if d2=='.' || d2=='..'
+//        if File.directory?(File.join(d.path,d2))
+//          Fileinfo.add_path(location,File.join(d.path,d2),opts) if opts[:include_subdirs]
+//        else
+//          if File.file?(File.join(d.path,d2))
+//            Fileinfo.add_file(location,d.path,d2,opts)
 //          end
 //        end
-//        return true
-//          findclose;
+//      end
+//      return true
         end;
-      h.free;
+    end;
   finally
-//    findclose;
-    h.Free;
+    findclose(r);
   end
 end;
 
-procedure TFrmAddFiles.AddFileToTgit(location_id: Integer; path,fname: String; initialTags:String);
+procedure TFrmAddFiles.AddFileToTgit(location: TLocation; path,fname: String; initialTags:String);
+var
+  path_file,sha2: string;
+  f: File of Byte;
+  fsize: Integer;
+  fi: TFileinfo;
 begin
-//    path_file=File.join(path,filename)
-//    f=File.open(path_file,'rb')
-//    s=Digest::SHA2.hexdigest(f.read)
-//    f.close
+  try
+    path_file:=path+'\'+fname;
+    sha2:=TFrmMain(mainform).GetSha2(path_file);
+    fsize:=TFrmMain(mainform).GetFilesize(path_file);
+    fi:=TFileinfo.db_find_or_create_by_sha2_and_filesize(TFrmMain(mainForm).sldb,sha2,fsize);
 //    inf=Fileinfo.find_or_create_by_sha2_and_filesize(s, File.size(path_file))
 //    unless opts[:tag_list].blank?
 //      inf.tag_list="#{inf.tag_list.blank? ? '' : inf.tag_list.join(', ')+', '}#{opts[:tag_list]}"
@@ -155,11 +171,13 @@ begin
 //    path=Iconv.iconv('utf-8','iso-8859-1',path).first
 //    FileLocation.find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(inf.id,location.id,path,filename) if inf
 //  end
+  finally
+  end;
 end;
 
 
 
-procedure TFrmAddFiles.Button10Click(Sender: TObject);
+procedure TFrmAddFiles.btnCloseClick(Sender: TObject);
 begin
   Close;
 end;

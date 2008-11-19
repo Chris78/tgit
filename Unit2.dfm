@@ -1,6 +1,6 @@
 object FrmMain: TFrmMain
-  Left = 223
-  Top = 111
+  Left = 258
+  Top = 29
   Width = 1147
   Height = 873
   Caption = 'Tgit GUI'
@@ -60,7 +60,7 @@ object FrmMain: TFrmMain
   end
   object lblLimitTags: TLabel
     Left = 606
-    Top = 5
+    Top = 3
     Width = 51
     Height = 13
     Caption = 'Limit Tags:'
@@ -76,8 +76,8 @@ object FrmMain: TFrmMain
     Stretch = True
   end
   object lblFilterTags: TLabel
-    Left = 609
-    Top = 35
+    Left = 608
+    Top = 29
     Width = 52
     Height = 13
     Caption = 'Filter Tags:'
@@ -89,50 +89,32 @@ object FrmMain: TFrmMain
     Height = 13
     Caption = '0'
   end
-  object edtSelectedTags: TEdit
-    Left = 8
-    Top = 8
-    Width = 481
-    Height = 21
-    TabOrder = 0
-    OnChange = edtSelectedTagsChange
-  end
   object TagCloud: TGroupBox
     Left = 588
-    Top = 64
+    Top = 48
     Width = 541
-    Height = 754
+    Height = 770
     Anchors = [akTop, akRight]
     Caption = 'TagCloud'
     Constraints.MinHeight = 300
     Constraints.MinWidth = 400
-    TabOrder = 1
+    TabOrder = 0
   end
   object chkMatchAll: TCheckBox
-    Left = 496
-    Top = 10
+    Left = 975
+    Top = 29
     Width = 73
     Height = 18
     Caption = 'match all?'
     Checked = True
     State = cbChecked
-    TabOrder = 2
-  end
-  object Button1: TButton
-    Left = 8
-    Top = 32
-    Width = 75
-    Height = 25
-    Caption = 'Test SHA2'
-    TabOrder = 3
-    OnClick = Button1Click
+    TabOrder = 1
   end
   object TrackBar1: TTrackBar
     Left = 664
-    Top = 0
+    Top = -2
     Width = 333
     Height = 25
-    Anchors = [akLeft, akTop, akRight]
     Max = 30
     Min = 1
     Orientation = trHorizontal
@@ -140,7 +122,7 @@ object FrmMain: TFrmMain
     Position = 15
     SelEnd = 0
     SelStart = 0
-    TabOrder = 4
+    TabOrder = 2
     TickMarks = tmBottomRight
     TickStyle = tsAuto
     OnChange = TrackBar1Change
@@ -151,37 +133,37 @@ object FrmMain: TFrmMain
     Width = 697
     Height = 21
     Anchors = [akLeft, akBottom]
-    TabOrder = 5
+    TabOrder = 3
     Text = 'edtQuery'
   end
   object Button2: TButton
-    Left = 120
-    Top = 32
+    Left = 64
+    Top = 0
     Width = 75
     Height = 25
     Caption = 'Test Hashes'
-    TabOrder = 6
+    TabOrder = 4
     OnClick = Button2Click
   end
   object Button3: TButton
-    Left = 200
-    Top = 32
+    Left = 144
+    Top = 0
     Width = 105
     Height = 25
     Caption = 'Test Fileinfo Model'
-    TabOrder = 7
+    TabOrder = 5
     OnClick = Button3Click
   end
   object TabControl1: TTabControl
     Left = 0
-    Top = 64
+    Top = 52
     Width = 569
-    Height = 585
+    Height = 601
     Anchors = [akLeft, akTop, akBottom]
     Constraints.MinHeight = 300
     Constraints.MinWidth = 400
     MultiLine = True
-    TabOrder = 8
+    TabOrder = 6
     TabPosition = tpRight
     Tabs.Strings = (
       'Fileinfos'
@@ -192,7 +174,7 @@ object FrmMain: TFrmMain
       Left = 4
       Top = 4
       Width = 542
-      Height = 577
+      Height = 593
       Align = alClient
       TabOrder = 0
       Visible = False
@@ -200,7 +182,7 @@ object FrmMain: TFrmMain
         Left = 1
         Top = 1
         Width = 540
-        Height = 575
+        Height = 591
         Align = alClient
         DefaultColWidth = 180
         DefaultRowHeight = 16
@@ -213,15 +195,15 @@ object FrmMain: TFrmMain
       Left = 4
       Top = 4
       Width = 542
-      Height = 577
+      Height = 593
       Align = alClient
       TabOrder = 1
       DesignSize = (
         542
-        577)
+        593)
       object ButtonBack: TButton
         Left = 320
-        Top = 544
+        Top = 560
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
@@ -232,7 +214,7 @@ object FrmMain: TFrmMain
       end
       object ButtonNext: TButton
         Left = 424
-        Top = 544
+        Top = 560
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
@@ -249,7 +231,7 @@ object FrmMain: TFrmMain
       end
       object ChkShowAccessablesOnly: TCheckBox
         Left = 8
-        Top = 549
+        Top = 565
         Width = 177
         Height = 17
         Anchors = [akLeft, akBottom]
@@ -259,12 +241,12 @@ object FrmMain: TFrmMain
     end
   end
   object Button4: TButton
-    Left = 312
-    Top = 32
+    Left = 256
+    Top = 0
     Width = 89
     Height = 25
     Caption = 'Test JPGThumb'
-    TabOrder = 9
+    TabOrder = 7
   end
   object btnCreateAllThumbs: TButton
     Left = 8
@@ -273,7 +255,7 @@ object FrmMain: TFrmMain
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'create all Thumbs'
-    TabOrder = 10
+    TabOrder = 8
     OnClick = btnCreateAllThumbsClick
   end
   object ProgressThumbCreate: TProgressBar
@@ -285,24 +267,24 @@ object FrmMain: TFrmMain
     Min = 0
     Max = 100
     Step = 1
-    TabOrder = 11
+    TabOrder = 9
   end
   object edtTagFilter: TEdit
-    Left = 672
-    Top = 32
+    Left = 671
+    Top = 26
     Width = 289
     Height = 21
-    TabOrder = 12
+    TabOrder = 10
     OnChange = edtTagFilterChange
     OnKeyPress = edtTagFilterKeyPress
   end
   object Button6: TButton
-    Left = 408
-    Top = 32
+    Left = 352
+    Top = 0
     Width = 75
     Height = 25
     Caption = 'Drives?'
-    TabOrder = 13
+    TabOrder = 11
     OnClick = Button6Click
   end
   object Button7: TButton
@@ -312,15 +294,14 @@ object FrmMain: TFrmMain
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'Fileinfo.CDROM'
-    TabOrder = 14
+    TabOrder = 12
     OnClick = Button7Click
   end
   object DCP_sha256: TDCP_sha256
     Id = 28
     Algorithm = 'SHA256'
     HashSize = 256
-    Left = 88
-    Top = 32
+    Left = 32
   end
   object Timer1: TTimer
     Enabled = False
@@ -447,8 +428,7 @@ object FrmMain: TFrmMain
     Left = 568
   end
   object PopupPreview: TPopupMenu
-    Left = 680
-    Top = 64
+    Left = 536
     object Schlagwortendern1: TMenuItem
       Caption = 'Schlagworte '#228'ndern'
     end
