@@ -10,7 +10,9 @@ uses
   UPreview in 'UPreview.pas',
   ULocation in 'ULocation.pas',
   UFrmAddFiles in 'UFrmAddFiles.pas' {FrmAddFiles},
-  UHelper in 'UHelper.pas';
+  UHelper in 'UHelper.pas',
+  UTag in 'UTag.pas',
+  UTagging in 'UTagging.pas';
 
 {$R *.res}
 

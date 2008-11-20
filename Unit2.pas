@@ -205,7 +205,6 @@ type
     function DoLoad(var img:TImage;const FileName: String):Boolean;
     function renderPreview(fi:TFileinfo):Boolean;
     function LoadImage(var img: TImage; fi : TFileinfo; angle:Integer):Boolean;
-//    procedure previewDblClick(Sender:TObject);
     procedure FilterTagCloud;
   public
     { Public declarations }
@@ -314,7 +313,7 @@ begin
   while not tbl.eof do
   begin
     r:=tbl.GetRow;
-    f:=TFileinfo.create(r,sldb,true);
+    f:=TFileinfo.create(sldb,r,true);
     r.free;
     if h.GetString(inttostr(f.id))<>'1' then
       begin
@@ -418,7 +417,6 @@ begin
       Hint:=accessiblePath;
       ShowHint:=true;
 //      onClick:=previewClick;
-//      OnDblClick:=previewDblClick;
       OnContextPopup:=previewClick;
       PopupMenu:=PopupPreview;
     end;
@@ -1075,7 +1073,6 @@ begin
   if fpath='' then
     result:=false
   else
-  begin
   try
     t := FreeImage_GetFileType(PChar(fpath), 16);
      if t = FIF_UNKNOWN then
@@ -1159,7 +1156,6 @@ begin
 //    Close;
 //  end;
   end;
-  end;
 end;
 
 
@@ -1214,7 +1210,7 @@ begin
   while not tbl.eof do
   begin
     row:=tbl.GetRow;
-    f:=TFileinfo.create(row,sldb,true);
+    f:=TFileinfo.create(sldb,row,true);
     row.free;
     if h.GetString(inttostr(f.id))<>'1' then
       begin
@@ -1455,7 +1451,6 @@ begin
   with TFrmAddFiles.Create(self) do
   try
     ShowModal;
-    //      alert(ShellTreeView1.SelectedFolder.PathName)
   finally
     Free;
   end;

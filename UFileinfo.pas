@@ -2,10 +2,12 @@ unit UFileinfo;
 
 interface
 
-uses Hashes,sysutils,Contnrs, UFileLocation, Dialogs, Forms, SQLiteTable3, UHelper;
+uses Classes,Hashes,sysutils,Contnrs, UFileLocation, Dialogs, Forms, SQLiteTable3, UHelper, UTag, UTagging, StringItWell;
 
 type
-  TFunctionPtr = function : String of Object;
+//  TFunctionPtr = function : String of Object;
+  TTaggings = TObjectList;
+  TTags = TObjectList;
 
   TFileinfo = class(TObject)
 
@@ -15,39 +17,44 @@ type
     filesize: Integer;
     file_locations: TObjectList;
     sldb: TSQLiteDatabase;
-    getCDROM : TFunctionPtr;
+//    getCDROM : TFunctionPtr;
     alternateDriveLetter: Pointer; // Es kann sein, dass eine CD in Laufwerk d: lag als sie indiziert wurde, aber nun in Laufwerk e: liegt!
     alternateHTTPHost,alternateHTTPPath: String;
 
-    //preview: TImage;
-    constructor create(fields: THash; db: TSQLiteDatabase; includeFileLocations: Boolean);
+    constructor create(db: TSQLiteDatabase; fields: THash; includeFileLocations: Boolean);
+    destructor destroy();
+
     function getAttr(name:String):String;
     function file_location_find_by_id(id:String):TFileLocation;
     function getAccessibleLocation(CDROMDriveLetter,UsbStickLetter:string): String;
     function getAlternateDriveLetter():string;
     function setDriveLetter(letter,path:string):string;
 
-    function getTags():TObjectList;
+    function getTags(reload: Boolean = false):TObjectList;
+    function setTaglist(s:String):TObjectList;
+    function addTagNames(ts:string) : TObjectList;
+    function addTagName(t:string) : TObjectList;
+    function removeTagNames(ts:string) : TObjectList;
+    function removeTagName(t:string) : TObjectList;
 
-    function addTagNames(tags:string) : Boolean;
-    function addTagName(tag:string) : Boolean;
-    function removeTagNames(tags:string) : Boolean;
-    function removeTagName(tag:string) : Boolean;
-
-    function addTagIDs(tag_ids:string) : Boolean;
-    function addTagID(tag_id:integer) : Boolean;
-    function removeTagIDs(tag_ids:string) : Boolean;
-    function removeTagID(tag_id:integer) : Boolean;
+    function addTagIDs(tag_ids:string) : TObjectList;
+    function addTagID(tag_id:integer) : TObjectList;
+    function removeTagIDs(tag_ids:string) : TObjectList;
+    function removeTagID(tag_id:integer) : TObjectList;
     class function db_find(db:TSQLiteDatabase; id:integer): TFileinfo;
     class function db_create(db: TSQLiteDatabase; sha2:string; fsize:integer): TFileinfo;
     class function db_find_or_create_by_sha2_and_filesize(db: TSQLiteDatabase; sha2:string; fsize:integer):TFileinfo;
+
+    private
+      taggings: TTaggings;
+      tags: TTags;
   end;
 
 implementation
 
 uses Unit2;
 
-constructor TFileinfo.create(fields: THash; db: TSQLiteDatabase; includeFileLocations: Boolean);
+constructor TFileinfo.create(db: TSQLiteDatabase; fields: THash; includeFileLocations: Boolean);
 var
   s1,s2,s3,query,flid: String;
   tbl: TSQLiteTable;
@@ -57,10 +64,14 @@ begin
   s1:=fields.GetString('ID');
   s2:=fields.GetString('SHA2');
   s3:=fields.GetString('FILESIZE');
-  if s1='' then
-    messageDlg('FEHLER: ID ist leer',mtInformation,[mbOK],0)
+  if s1='' then begin
+    messageDlg('FEHLER: ID ist leer',mtInformation,[mbOK],0);
+    self.Free;
+  end  
   else
     begin
+//      taggings:=TObjectList.create;
+//      tags:=TObjectList.create;
       id:=strtoint(s1);
       sha2:=UTF8Decode(s2);
       filesize:=strtoint(s3);
@@ -81,8 +92,15 @@ begin
            self.file_locations.Add(fl);
            tbl.next;
          end;
-       end;  
+       end;
     end;
+end;
+
+destructor TFileinfo.destroy();
+begin
+  file_locations.free;
+  tags.free;
+  taggings.free;
 end;
 
 function TFileinfo.getAttr(name:String):String;
@@ -132,7 +150,7 @@ var i:integer;
 begin
   for i:=0 to length(letter)-1 do
     path[i]:=letter[i];
-  result:=path;  
+  result:=path;
 end;
 
 function TFileinfo.getAlternateDriveLetter():string;
@@ -141,47 +159,97 @@ var
 begin
 //redo?  f:=TForm1(self.mainform);
 //       result:=f.caption;
-  getCDROM();
+//  getCDROM();
 end;
 
-function TFileinfo.getTags():TObjectList;
+function TFileinfo.getTags(reload: Boolean = false):TObjectList;
+var
+  tbl: TSQLiteTable;
+begin
+  if (tags<>nil) and not reload then
+    result:=tags
+  else begin
+    if tags<>nil then tags.free;
+    tbl := sldb.GetTable('SELECT tags.* FROM taggings LEFT JOIN tags ON taggings.tag_id=tags.id WHERE taggings.taggable_type="Fileinfo" AND taggings.taggable_id="'+inttostr(self.id)+'"');
+    tags:=TObjectList.create();
+    while not tbl.EOF do begin
+      tags.Add(TTag.Create(sldb, tbl.getRow));
+      tbl.Next;
+    end;
+    result:=tags;
+  end;
+end;
+
+function TFileinfo.setTaglist(s:String):TObjectList;
 begin
 end;
 
 // by Name
-function TFileinfo.addTagNames(tags:string) : Boolean;
+function TFileinfo.addTagNames(ts:string) : TObjectList;
+var
+  l: TObjectList;
+  pcs: TStringList;
+  i,j: integer;
+  t: TTag;
+  tgg: TTagging;
+  found: Boolean;
+begin
+  try
+    l:=getTags;
+    pcs:=Split(ts,',');
+    for i:=0 to pcs.Count-1 do begin
+      t:=TTag.db_find_or_create(sldb,pcs[i]);
+      found:=false;
+      for j:=0 to l.count-1 do begin
+        if TTag(l.Items[j]).id=t.id then begin
+          found:=true;
+          break;
+        end;
+      end;
+      if not found then begin
+        tgg:=TTagging.db_create(sldb,'Fileinfo',self.id,t.id);
+        tgg.free;
+      end;
+      t.Free;
+    end;
+    result:=getTags(true);
+  finally
+    pcs.Free;
+  end;
+end;
+
+function TFileinfo.addTagName(t:string) : TObjectList;
 begin
 end;
 
-function TFileinfo.addTagName(tag:string) : Boolean;
+function TFileinfo.removeTagNames(ts:string) : TObjectList;
 begin
 end;
 
-function TFileinfo.removeTagNames(tags:string) : Boolean;
-begin
-end;
-
-function TFileinfo.removeTagName(tag:string) : Boolean;
+function TFileinfo.removeTagName(t:string) : TObjectList;
 begin
 end;
 
 // by ID
-function TFileinfo.addTagIDs(tag_ids:string) : Boolean;
+function TFileinfo.addTagIDs(tag_ids:string) : TObjectList;
 begin
 end;
 
-function TFileinfo.addTagID(tag_id:integer) : Boolean;
+function TFileinfo.addTagID(tag_id:integer) : TObjectList;
 begin
 end;
 
-function TFileinfo.removeTagIDs(tag_ids:string) : Boolean;
+function TFileinfo.removeTagIDs(tag_ids:string) : TObjectList;
 begin
 end;
 
-function TFileinfo.removeTagID(tag_id:integer) : Boolean;
+function TFileinfo.removeTagID(tag_id:integer) : TObjectList;
 begin
 end;
 
+// =============================================================================
+//                             Klassen-Methoden
+// =============================================================================
 
 class function TFileinfo.db_find(db:TSQLiteDatabase; id:integer): TFileinfo;
 var
@@ -189,7 +257,7 @@ var
 begin
   tbl:=db.GetTable('SELECT * FROM fileinfos WHERE id="'+inttostr(id)+'"');
   if tbl.Count>0 then begin
-    result:=TFileinfo.create(tbl.getRow,db,true);
+    result:=TFileinfo.create(db,tbl.getRow,true);
   end
   else begin
     alert('Fileinfo '+inttostr(id)+' nicht gefunden!');
@@ -211,7 +279,7 @@ var
 begin
   tbl:=db.GetTable('SELECT * FROM fileinfos WHERE sha2="'+sha2+'" AND filesize="'+inttostr(fsize)+'"');
   if tbl.Count>0 then begin
-    result:=TFileinfo.create(tbl.getRow,db,true);
+    result:=TFileinfo.create(db,tbl.getRow,true);
   end
   else begin
     result:=TFileinfo.db_create(db,sha2,fsize);

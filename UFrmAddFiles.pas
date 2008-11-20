@@ -162,11 +162,9 @@ begin
     sha2:=TFrmMain(mainform).GetSha2(path_file);
     fsize:=TFrmMain(mainform).GetFilesize(path_file);
     fi:=TFileinfo.db_find_or_create_by_sha2_and_filesize(TFrmMain(mainForm).sldb,sha2,fsize);
-//    inf=Fileinfo.find_or_create_by_sha2_and_filesize(s, File.size(path_file))
-//    unless opts[:tag_list].blank?
-//      inf.tag_list="#{inf.tag_list.blank? ? '' : inf.tag_list.join(', ')+', '}#{opts[:tag_list]}"
-//      inf.save
-//    end
+  // Jetzt die Tags hinzufügen
+    fi.addTagNames(initialTags);
+// und die File_Location anlegen, damit man auch weiß, wo die Datei lag:
 //    filename=Iconv.iconv('utf-8','iso-8859-1',filename).first
 //    path=Iconv.iconv('utf-8','iso-8859-1',path).first
 //    FileLocation.find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(inf.id,location.id,path,filename) if inf
