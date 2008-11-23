@@ -5,7 +5,9 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls, ShellCtrls, ExtCtrls,ShellAPI,
-  Hashes,StringItWell,UFileinfo,ULocation,UHelper;
+  Hashes,StringItWell,
+  UFileinfo,UFileLocation,ULocation,UHelper,
+  SQLiteTable3, jpeg;
 
 type
   TFrmAddFiles = class(TForm)
@@ -18,14 +20,17 @@ type
     edtInitialTags: TEdit;
     BtnAddFiles: TButton;
     btnClose: TButton;
+    imgPreview: TImage;
     procedure FormCreate(Sender: TObject);
     procedure BtnAddFilesClick(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
     procedure cmbLocationChange(Sender: TObject);
     procedure ShellTreeView1DblClick(Sender: TObject);
+    procedure ShellTreeView1Change(Sender: TObject; Node: TTreeNode);
   private
     { Private declarations }
     mainForm : TObject;
+    sldb: TSQLiteDatabase;
   public
     { Public declarations }
   constructor create(Sender: TComponent);
@@ -47,8 +52,10 @@ uses
 
 constructor TFrmAddFiles.create(Sender: TComponent);
 begin
-  mainForm:=Sender;
   inherited create(Sender);
+  mainForm:=TFrmMain(Sender);
+  sldb:=TFrmMain(mainForm).sldb;
+  edtInitialTags.Text:=TFrmMain(mainForm).selectedTags.CommaText;
 end;
 
 procedure TFrmAddFiles.cmbLocationChange(Sender: TObject);
@@ -84,8 +91,7 @@ var
   selectedLocation: TLocation;
   path:String;
 begin
-  if cmbLocation.itemindex>-1 then
-  begin
+  if cmbLocation.itemindex>-1 then begin
     path:=ShellTreeView1.SelectedFolder.PathName;
     selectedLocation:=getSelectedLocation();
     AddPathToTgit(selectedlocation,path,chkSubfolders.checked,edtInitialTags.text);
@@ -156,20 +162,25 @@ var
   f: File of Byte;
   fsize: Integer;
   fi: TFileinfo;
+  fl: TFileLocation;
 begin
   try
     path_file:=path+'\'+fname;
     sha2:=TFrmMain(mainform).GetSha2(path_file);
     fsize:=TFrmMain(mainform).GetFilesize(path_file);
-    fi:=TFileinfo.db_find_or_create_by_sha2_and_filesize(TFrmMain(mainForm).sldb,sha2,fsize);
+    fi:=TFileinfo.db_find_or_create_by_sha2_and_filesize(sldb,sha2,fsize);
   // Jetzt die Tags hinzufügen
     fi.addTagNames(initialTags);
 // und die File_Location anlegen, damit man auch weiß, wo die Datei lag:
 //    filename=Iconv.iconv('utf-8','iso-8859-1',filename).first
 //    path=Iconv.iconv('utf-8','iso-8859-1',path).first
 //    FileLocation.find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(inf.id,location.id,path,filename) if inf
+    fl:=TFileLocation.db_find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(sldb,fi.id, location.id, path, fname);
 //  end
   finally
+    fi.free;
+    fl.free;
+    close;
   end;
 end;
 
@@ -178,6 +189,16 @@ end;
 procedure TFrmAddFiles.btnCloseClick(Sender: TObject);
 begin
   Close;
+end;
+
+procedure TFrmAddFiles.ShellTreeView1Change(Sender: TObject;
+  Node: TTreeNode);
+var
+  fname: String;
+begin
+  fname:=ShellTreeView1.SelectedFolder.PathName;
+  if fileExists(fname) then
+    DoLoadImage(fname,imgPreview);
 end;
 
 end.

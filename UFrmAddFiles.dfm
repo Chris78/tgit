@@ -1,6 +1,6 @@
 object FrmAddFiles: TFrmAddFiles
-  Left = 619
-  Top = 43
+  Left = 434
+  Top = 239
   Width = 800
   Height = 568
   Caption = 'Dateien zu tgit hinzuf'#252'gen'
@@ -38,21 +38,32 @@ object FrmAddFiles: TFrmAddFiles
       Width = 3
       Height = 13
     end
+    object imgPreview: TImage
+      Left = 408
+      Top = 24
+      Width = 377
+      Height = 441
+      Anchors = [akTop, akRight, akBottom]
+      Center = True
+      Proportional = True
+    end
     object ShellTreeView1: TShellTreeView
       Left = 1
       Top = 24
-      Width = 790
+      Width = 400
       Height = 441
-      ObjectTypes = [otFolders, otNonFolders]
+      ObjectTypes = [otFolders, otNonFolders, otHidden]
       Root = 'rfMyComputer'
       UseShellImages = True
       Anchors = [akLeft, akTop, akRight, akBottom]
       AutoRefresh = False
+      HideSelection = False
       Indent = 19
       ParentColor = False
       RightClickSelect = True
       ShowRoot = False
       TabOrder = 0
+      OnChange = ShellTreeView1Change
     end
     object cmbLocation: TComboBox
       Left = 1

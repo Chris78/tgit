@@ -12,12 +12,15 @@ uses
   UFrmAddFiles in 'UFrmAddFiles.pas' {FrmAddFiles},
   UHelper in 'UHelper.pas',
   UTag in 'UTag.pas',
-  UTagging in 'UTagging.pas';
+  UTagging in 'UTagging.pas',
+  UFrmEditTags in 'UFrmEditTags.pas' {frmEditTags},
+  UTagMenuItem in 'UTagMenuItem.pas';
 
 {$R *.res}
 
 begin
   Application.Initialize;
   Application.CreateForm(TFrmMain, FrmMain);
+  Application.CreateForm(TfrmEditTags, frmEditTags);
   Application.Run;
 end.

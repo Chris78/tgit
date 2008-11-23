@@ -1,8 +1,8 @@
 object FrmMain: TFrmMain
-  Left = 258
-  Top = 29
+  Left = 244
+  Top = 84
   Width = 1147
-  Height = 873
+  Height = 871
   Caption = 'Tgit GUI'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -47,12 +47,12 @@ object FrmMain: TFrmMain
   OnResize = FormResize
   DesignSize = (
     1139
-    827)
+    825)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
     Left = 8
-    Top = 784
+    Top = 782
     Width = 32
     Height = 13
     Anchors = [akLeft, akBottom]
@@ -67,7 +67,7 @@ object FrmMain: TFrmMain
   end
   object Image1: TImage
     Left = 357
-    Top = 656
+    Top = 654
     Width = 228
     Height = 145
     Anchors = [akLeft, akBottom]
@@ -129,8 +129,8 @@ object FrmMain: TFrmMain
   end
   object edtQuery: TEdit
     Left = 8
-    Top = 805
-    Width = 697
+    Top = 803
+    Width = 569
     Height = 21
     Anchors = [akLeft, akBottom]
     TabOrder = 3
@@ -158,7 +158,7 @@ object FrmMain: TFrmMain
     Left = 0
     Top = 52
     Width = 569
-    Height = 601
+    Height = 599
     Anchors = [akLeft, akTop, akBottom]
     Constraints.MinHeight = 300
     Constraints.MinWidth = 400
@@ -174,7 +174,7 @@ object FrmMain: TFrmMain
       Left = 4
       Top = 4
       Width = 542
-      Height = 593
+      Height = 591
       Align = alClient
       TabOrder = 0
       Visible = False
@@ -182,7 +182,7 @@ object FrmMain: TFrmMain
         Left = 1
         Top = 1
         Width = 540
-        Height = 591
+        Height = 589
         Align = alClient
         DefaultColWidth = 180
         DefaultRowHeight = 16
@@ -195,15 +195,15 @@ object FrmMain: TFrmMain
       Left = 4
       Top = 4
       Width = 542
-      Height = 593
+      Height = 591
       Align = alClient
       TabOrder = 1
       DesignSize = (
         542
-        593)
+        591)
       object ButtonBack: TButton
         Left = 320
-        Top = 560
+        Top = 558
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
@@ -214,7 +214,7 @@ object FrmMain: TFrmMain
       end
       object ButtonNext: TButton
         Left = 424
-        Top = 560
+        Top = 558
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
@@ -226,12 +226,13 @@ object FrmMain: TFrmMain
         Left = 1
         Top = 1
         Width = 540
-        Height = 536
+        Height = 552
+        Anchors = [akLeft, akTop, akRight, akBottom]
         TabOrder = 2
       end
       object ChkShowAccessablesOnly: TCheckBox
         Left = 8
-        Top = 565
+        Top = 563
         Width = 177
         Height = 17
         Anchors = [akLeft, akBottom]
@@ -250,7 +251,7 @@ object FrmMain: TFrmMain
   end
   object btnCreateAllThumbs: TButton
     Left = 8
-    Top = 728
+    Top = 726
     Width = 105
     Height = 25
     Anchors = [akLeft, akBottom]
@@ -260,7 +261,7 @@ object FrmMain: TFrmMain
   end
   object ProgressThumbCreate: TProgressBar
     Left = 8
-    Top = 760
+    Top = 758
     Width = 105
     Height = 16
     Anchors = [akLeft, akBottom]
@@ -289,7 +290,7 @@ object FrmMain: TFrmMain
   end
   object Button7: TButton
     Left = 8
-    Top = 656
+    Top = 654
     Width = 89
     Height = 25
     Anchors = [akLeft, akBottom]
@@ -428,9 +429,14 @@ object FrmMain: TFrmMain
     Left = 568
   end
   object PopupPreview: TPopupMenu
+    OnPopup = PopupPreviewPopup
     Left = 536
     object Schlagwortendern1: TMenuItem
-      Caption = 'Schlagworte '#228'ndern'
+      Caption = 'Schlagworte bearbeiten'
+      OnClick = Schlagwortendern1Click
+    end
+    object Schlagwortentfernen1: TMenuItem
+      Caption = 'Schlagwort entfernen'
     end
     object Dateiffnen1: TMenuItem
       Caption = 'Datei '#246'ffnen'

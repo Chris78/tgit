@@ -15,9 +15,10 @@ type
     sldb: TSQLiteDatabase;
 
     constructor create(db: TSQLiteDatabase; fields: THash);
-    class function db_find(db: TSQLiteDatabase; id:Integer): TTag;    
+    class function db_find(db: TSQLiteDatabase; id:Integer): TTag;
     class function db_find_or_create(db: TSQLiteDatabase; name:String): TTag;
     class function db_create(db: TSQLiteDatabase; name:string):TTag;
+    class procedure db_delete(db:TSQLiteDatabase;id:Integer);    
   end;
 
 implementation
@@ -35,7 +36,7 @@ begin
   end
   else begin
     id:=strtoint(s);
-    name:=fields.GetString('NAME');
+    name:=UTF8Decode(fields.GetString('NAME'));
   end;
 end;
 
@@ -43,7 +44,7 @@ class function TTag.db_find_or_create(db: TSQLiteDatabase;name:String): TTag;
 var
   tbl: TSQLiteTable;
 begin
-  tbl:=db.GetTable('SELECT * FROM tags WHERE name="'+name+'"');
+  tbl:=db.GetTable('SELECT * FROM tags WHERE name="'+UTF8Encode(name)+'"');
   if tbl.Count>0 then begin
     result:=TTag.create(db,tbl.getRow);
   end
@@ -56,7 +57,7 @@ class function TTag.db_create(db: TSQLiteDatabase; name:string):TTag;
 var
   id: Int64;
 begin
-  db.ExecSQL('INSERT INTO tags (name) VALUES ("'+name+'")');
+  db.ExecSQL('INSERT INTO tags (name) VALUES ("'+UTF8Encode(name)+'")');
   id:=db.GetLastInsertRowID;
   result:=TTag.db_find(db,id);
 end;
@@ -72,6 +73,11 @@ begin
   else begin
     alert('Tag '+inttostr(id)+' nicht gefunden!');
   end;
+end;
+
+class procedure TTag.db_delete(db:TSQLiteDatabase;id:Integer);
+begin
+  db.ExecSQL('DELETE FROM tags WHERE id="'+inttostr(id)+'"');
 end;
 
 end.

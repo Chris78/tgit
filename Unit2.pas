@@ -1,10 +1,3 @@
-{
- verfügbare Laufwerke herausfinden:
- * DWORD GetLogicalDrives()
- * DWORD GetLogicalDriveStrings( DWORD nBufferLength, LPTSTR lpBuffer )
- * UINT GetDriveType( LPCTSTR lpRootPathName )
-}
-
 unit Unit2;
  {$OPTIMIZATION OFF}
 interface
@@ -13,10 +6,14 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, SQLiteTable3, ComCtrls, Grids, StringItWell,
   DCPcrypt2, DCPsha256, Math, TabNotBk, ExtCtrls, Menus, Hashes, Contnrs,
-  ExtDlgs, UFileinfo, UFileLocation, ULocation, FreeBitmap, DBTables,
+  ExtDlgs, FreeBitmap, DBTables,
+  UFrmAddFiles, UFrmEditTags,
+  UFileinfo, UFileLocation, ULocation, UTag, UTagging,
+  UTagMenuItem,
+  UHelper,
   //GraphicEx,
-  jpeg,
-  ShellAPI, UJPGStreamFix, UPreview, MPlayer, ShellCtrls, IdGlobal, UFrmAddFiles, UHelper;
+  jpeg, UJPGStreamFix, 
+  ShellAPI, UPreview, MPlayer, ShellCtrls, IdGlobal;
 
 const
   rowPadding=2;
@@ -112,6 +109,7 @@ type
     Button7: TButton;
     LaufwerksbuchstabefrUSBGerte1: TMenuItem;
     Label4: TLabel;
+    Schlagwortentfernen1: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormResize(Sender: TObject);
@@ -120,10 +118,7 @@ type
     procedure Datenbankwhlen1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
-//    function  fileinfo_find(id:Integer; params:TSQLParams):TObjectList;
-//    function file_location_find_by_id(id:String):TFileLocation;
-    procedure StringGrid2SelectCell(Sender: TObject; ACol, ARow: Integer;
-      var CanSelect: Boolean);
+    procedure StringGrid2SelectCell(Sender: TObject; ACol, ARow: Integer; var CanSelect: Boolean);
     procedure N11Click(Sender: TObject);
     procedure N101Click(Sender: TObject);
     procedure N91Click(Sender: TObject);
@@ -159,16 +154,17 @@ type
     procedure Button7Click(Sender: TObject);
     procedure Button10Click(Sender: TObject);
     procedure hinzufgen2Click(Sender: TObject);
-
+    procedure Schlagwortendern1Click(Sender: TObject);
+    procedure PopupPreviewPopup(Sender: TObject);
+    procedure doRemoveTag(Sender:TObject);
   private
     { Private declarations }
-    importingThumbs: Boolean;
+    importingThumbs,busyReloading: Boolean;
     slDBPath, thumbDBPath: String;
     sltb: TSQLiteTable;
     ItemsForSelectedTags: TObjectList;
     lastLabel: TLabel;
     maxTagCount: Integer;
-    selectedTags: TStringlist;
     curFileinfos: TObjectList;
     clickedPreview: TImage;
     clickedTagName: String;
@@ -182,37 +178,42 @@ type
     procedure unhighlight(Sender: TObject);
 
     procedure showFileinfos(fis: TObjectList);
-    procedure showTagcloud(tags:TSQLIteTable);
-    procedure clearTagcloud;
-    procedure arrangeTagCloud;
-    procedure updateDocuments(limit,offset:Integer);
-    procedure updatePreviews;
-    procedure clearPreviews;
-    procedure arrangePreviews();
 
-    procedure tagClick(Sender: TObject);
-    procedure previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
+    // TagCloud
+    procedure clearTagcloud;
+    function  GetTagCloud(limit:Integer; filter:String = ''): TSQLIteTable;
+    procedure showTagcloud(tags:TSQLiteTable);
+    procedure renderTag(tag_item,tag_count:String;i:Integer);
+    procedure ReloadTagCloud(limit:Integer = -1; filter: String = '');
+    procedure arrangeTagCloud;
     procedure selectTag(tag:String);
     procedure unselectTag(tag:String);
-    procedure ReloadTagCloud(limit:Integer);
-    function  GetTagCloud(limit:Integer): TSQLIteTable;
+    procedure FilterTagCloud;
+    procedure tagClick(Sender: TObject);
+
+    // Previews:
+    procedure clearPreviews;
     function  GetItemsFor(tags: TStringList; match_all:Boolean; limit,offset:Integer): TObjectList;
-    procedure renderTag(tag_item,tag_count:String;i:Integer);
+    function  renderPreview(fi:TFileinfo):Boolean;
+    procedure updatePreviews;
+    procedure arrangePreviews();
+    procedure previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
+
     function  StringToArrayOfBytes(s:String): TByteArray;
-//    procedure alert(s:String);
     function  getCommaListOf(attr:String;t:TObjectList;quot:String): String;
     function  quoteConcatStrList(s:TStringlist): string;
-    function DoLoad(var img:TImage;const FileName: String):Boolean;
-    function renderPreview(fi:TFileinfo):Boolean;
     function LoadImage(var img: TImage; fi : TFileinfo; angle:Integer):Boolean;
-    procedure FilterTagCloud;
+//    function doLoadImage(fpath: String; img: TImage; angle: Integer = 0; fi:TFileinfo = nil): Boolean;
+//    procedure saveThumb(fi:TFileinfo; img:TImage);
   public
     { Public declarations }
     sldb, thumbsdb: TSQLiteDatabase;
-    getCDROM : TFunctionPtr;
+    selectedTags: TStringlist;
     locations : TLocations;
+    getCDROM : TFunctionPtr;
     selectedCDROMDrive: String;
     selectedUSBDrive: String;
+    procedure updateDocuments(limit: Integer = -1; offset:Integer = -1);
     function GetSha2(filename:String): String;
     function GetFilesize(path_file:string): Integer;
     function Sha2(s:String): String;
@@ -232,6 +233,7 @@ uses FreeImage;
 procedure TFrmMain.FormCreate(Sender: TObject);
 begin
   importingThumbs:=false;
+  busyReloading:=false;
   // Settings setzen (Defaults)
   slDBPath := ExtractFilepath(application.exename)+ 'db\tgit.db';
   thumbDBPath := ExtractFilepath(application.exename)+ 'db\tgit_thumbs.db';
@@ -245,11 +247,12 @@ begin
   openDB(false); // try to open DB, but don't prompt user to choose a db-file
   openThumbDB;
   makeDriveLetterMenus();
+  self.OnResize(self);
 end;
 
 procedure TFrmMain.openDB(promptUser:Boolean);
 var
-  limit, i: Integer;
+  limit,i: Integer;
 begin
   FrmMain.Caption:='Tgit GUI';
   if not FileExists(slDBPath) and promptUser then
@@ -259,14 +262,12 @@ begin
       else
         alert('Bitte wählen Sie im Menü "Optionen" eine Datenbank aus!');
     end;
-  if FileExists(slDBPath) then
+  if FileExists(slDBPath) then begin
     sldb := TSQLiteDatabase.Create(slDBPath);
-  if sldb<>nil then
-  begin
     FrmMain.Caption:='Tgit GUI - '+slDBPath;
-    sltb := sldb.GetTable('select count(*) as anz from tags');
-    limit := floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
-    reloadTagCloud(limit);
+    //sltb := sldb.GetTable('select count(*) as anz from tags');
+    //limit := floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
+    reloadTagCloud;
     lastLabel:=nil;
     locations:=TLocations(TLocation.all(sldb));
   end;
@@ -336,31 +337,27 @@ begin
     StringGrid2.Rows[i].clear;
   end;
   i:=0;
-  if fis.Count > 0 then
-  begin
-      while i<fis.count do
-      begin
-        fi:=TFileinfo(fis[i]);
-        StringGrid2.rowcount:=i+1;
-        StringGrid2.cells[0,i]:=inttostr(fi.id);
-        StringGrid2.cells[1,i]:=fi.sha2;
-        StringGrid2.cells[2,i]:=inttostr(fi.filesize);
-        j:=4;
-        for k:=0 to fi.file_locations.Count-1 do
-        begin
+  if fis.Count > 0 then begin
+    while i<fis.count do begin
+      fi:=TFileinfo(fis[i]);
+      StringGrid2.rowcount:=i+1;
+      StringGrid2.cells[0,i]:=inttostr(fi.id);
+      StringGrid2.cells[1,i]:=fi.sha2;
+      StringGrid2.cells[2,i]:=inttostr(fi.filesize);
+      j:=4;
+      for k:=0 to fi.file_locations.Count-1 do begin
           fl:=TFileLocation(fi.file_locations[k]);
           if fl.accessible then
             StringGrid2.cells[3,i]:=fl.full_path
-          else
-            begin
-              StringGrid2.cells[j,i]:=fl.full_path;
-              inc(j);
-            end;
-        end;
-        inc(i);
+          else begin
+            StringGrid2.cells[j,i]:=fl.full_path;
+            inc(j);
+          end;
       end;
-      updatePreviews;
+      inc(i);
+    end;
   end;
+  updatePreviews;
 end;
 
 procedure TFrmMain.updatePreviews;
@@ -375,11 +372,9 @@ begin
   perPage:=picsPerCol*picsPerCol;
   i:=(pageNo-1)*perPage;  // Startindex
   c:=0;
-  while (i<curFileinfos.Count) and (c<perPage) do
-  begin
+  while (i<curFileinfos.Count) and (c<perPage) do begin
     fi:=TFileinfo(curFileinfos[i]);
-    if renderPreview(fi) then
-    begin
+    if renderPreview(fi) then begin
       arrangePreviews();
       application.processMessages;
       inc(c);
@@ -400,12 +395,10 @@ begin
   accessiblePath:=fi.getAccessibleLocation(selectedCDROMDrive,selectedUSBDrive);
   if (accessiblePath='') and ChkShowAccessablesOnly.Checked then
     result:=false  // Falls das Bild nicht erreichbar ist und nicht-erreichbare nicht ausgegeben werden sollen
-  else
-  begin
+  else begin
     result:=true;
     img:=TPreview.create(FrmMain,PanelPreviews,fi);
-    with img do
-    begin
+    with img do begin
       hide;
       stretch:=true;
       Proportional:=true;
@@ -416,38 +409,34 @@ begin
       Parent:=PanelPreviews;
       Hint:=accessiblePath;
       ShowHint:=true;
-//      onClick:=previewClick;
+      img.onDblClick:=TPreview(img).dblClick;
       OnContextPopup:=previewClick;
       PopupMenu:=PopupPreview;
     end;
 
     // Versuchen den Thumbnail aus der DB zu laden:
     tbl:=thumbsdb.GetTable('SELECT data FROM thumbs WHERE fileinfo_id="'+inttostr(fi.id)+'" LIMIT 1');
-    if tbl.RowCount>0 then
-      begin
-        if not importingThumbs then
-        begin
-          data:=TMemoryStream.create;
-          data:=tbl.FieldAsBlob(tbl.FieldIndex['data']);
-          data.Seek(0,0);
-          jp:=TJPEGImage.create;
-          jp.LoadFromStream(data);
-          img.picture.assign(jp);
+    if tbl.RowCount>0 then begin
+      if not importingThumbs then begin
+        data:=TMemoryStream.create;
+        data:=tbl.FieldAsBlob(tbl.FieldIndex['data']);
+        data.Seek(0,0);
+        jp:=TJPEGImage.create;
+        jp.LoadFromStream(data);
+        img.picture.assign(jp);
 //alert('nach assign: '+TPreview(img).fileinfo.sha2);
-          jp.free;
-          data.free;
-        end;
-      end
-    else
-      begin
-        success := LoadImage(img,fi,0);
-//alert('nach LoadImage: '+TPreview(img).fileinfo.sha2);
-        if not success then // Bild ist nicht-erreichbar oder nicht darstellbar.
-        begin
-          img.Picture.LoadFromFile(ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
-//alert('nach .Picture.LoadFromFile: '+TPreview(img).fileinfo.sha2);
-        end;
+        jp.free;
+        data.free;
       end;
+    end
+    else begin
+      success := LoadImage(img,fi,0);
+//alert('nach LoadImage: '+TPreview(img).fileinfo.sha2);
+      if not success then begin // Bild ist nicht-erreichbar oder nicht darstellbar.
+        img.Picture.LoadFromFile(ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
+//alert('nach .Picture.LoadFromFile: '+TPreview(img).fileinfo.sha2);
+      end;
+    end;
   end;
 end;
 
@@ -464,28 +453,24 @@ var
 begin
   last:=nil;
   h:=0;
-  for i:=0 to PanelPreviews.controlcount-1 do
-  begin
+  for i:=0 to PanelPreviews.controlcount-1 do begin
     cur:=TPreview(PanelPreviews.controls[i]);
     // Positionierung:
-    if last=nil then
-      begin
-        cur.left:=colPadding;
-        cur.Top:=rowPadding;
-      end
-    else
-      begin
-        h:=max(h,last.Height);
-        l:=last.Left+last.width+colPadding;
-        t:=last.Top;
-        if l+cur.width > cur.Parent.Width then
-          begin
-            l:=marginLeft;
-            t:=t+h+rowPadding;
-          end;
-        cur.Left:=l;
-        cur.Top:=t;
+    if last=nil then begin
+      cur.left:=colPadding;
+      cur.Top:=rowPadding;
+    end
+    else begin
+      h:=max(h,last.Height);
+      l:=last.Left+last.width+colPadding;
+      t:=last.Top;
+      if l+cur.width > cur.Parent.Width then begin
+          l:=marginLeft;
+          t:=t+h+rowPadding;
       end;
+      cur.Left:=l;
+      cur.Top:=t;
+    end;
     cur.Show;
     application.ProcessMessages;
     last:=cur;
@@ -505,28 +490,31 @@ begin
     TagCloud.Controls[0].free;
 end;
 
-procedure TFrmMain.ReloadTagCloud(limit:Integer);
+procedure TFrmMain.ReloadTagCloud(limit:Integer = -1; filter: String = '');
 begin
+  busyReloading:=true;
+  application.ProcessMessages;
+  if limit=-1 then limit:=300;
   clearTagCloud;
   application.ProcessMessages;
-  showTagcloud(GetTagCloud(limit));
+  showTagcloud(GetTagCloud(limit,filter));
+  busyReloading:=false;
 end;
 
 // Zeigt die TagCloud in Abhängigkeit der aktuell gewählten Tags und Dokumente:
-function TFrmMain.GetTagCloud(limit:Integer): TSQLiteTable;
+function TFrmMain.GetTagCloud(limit:Integer; filter: String = ''): TSQLiteTable;
 var
-  query,taggable_ids,tagnames,joinCondition,having: String;
+  query,taggable_ids,tagnames,joinCondition,filterCondition,having: String;
   tmp: TSQLiteTable;
 begin
-  if limit=0 then
-    begin
-      tmp := sldb.GetTable('select count(*) as anz from tags');
-      limit := floor(tmp.FieldAsInteger(tmp.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
-    end;
+  if limit=0 then begin
+    tmp := sldb.GetTable('SELECT COUNT(*) AS anz FROM tags WHERE name LIKE "%'+UTF8Encode(filter)+'%"');
+    limit := floor(tmp.FieldAsInteger(tmp.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
+  end;
   joinCondition:='';
   having:='';
-  if (ItemsForSelectedTags<>nil) and (ItemsForSelectedTags.count>0) then
-  begin
+  filterCondition:=' WHERE tags.name LIKE "%'+UTF8Encode(filter)+'%" ';
+  if (ItemsForSelectedTags<>nil) and (ItemsForSelectedTags.count>0) then begin
     taggable_ids:=getCommaListOf('id',itemsForSelectedTags,'');
 //    alert('taggable_ids = '+taggable_ids);
     if taggable_ids<>'' then
@@ -543,6 +531,7 @@ begin
     '    FROM tags '+
     '    JOIN taggings ON taggings.tag_id=tags.id '+
        joinCondition +
+       filterCondition +
     '    GROUP BY tags.id '+
        having+
     '    ORDER BY anz DESC '+
@@ -559,8 +548,7 @@ var
 begin
   result:='';
   i:=0;
-  while i<t.count do
-  begin
+  while i<t.count do begin
     val:=TFileinfo(t[i]).getAttr(attr);
     if result='' then
       result:=result+quot+val+quot
@@ -576,10 +564,8 @@ var tag_item,tag_count: String;
 begin
   maxTagCount:=0;
   i:=0;
-  if tags.Count > 0 then
-  begin
-    while not tags.EOF do
-    begin
+  if tags.Count > 0 then begin
+    while not tags.EOF do begin
       tag_item:=UTF8Decode(tags.FieldAsString(tags.FieldIndex['Name']));
       tag_count:=tags.FieldAsString(tags.FieldIndex['anz']);
       maxTagCount:=max(maxTagCount,StrToInt(tag_count));
@@ -605,16 +591,14 @@ begin
   tag.Hint:=tag_count+' mal getagged';
   tag.ShowHint:=true;
   tag.Transparent:=true;
-  if (selectedTags<>nil) and (selectedTags.IndexOf(tag.caption)>-1) then
-    begin
+  if (selectedTags<>nil) and (selectedTags.IndexOf(tag.caption)>-1) then begin
       tag.Font.Color:=clBlue;
       tag.tag:=1;
-    end
-  else
-    begin
+  end
+  else begin
       tag.Font.Color:=clBlack;
       tag.tag:=0;
-    end;
+  end;
   tag.Font.Style:=[fsUnderline];
   tag.Font.Name:='Helvetica';
   tag.Font.Size:=floor(minFontSize+(strtoint(tag_count)/maxTagCount)*incFontBy);
@@ -670,8 +654,10 @@ end;
 // <-- EventHandling für dynamisch erzeugte TagLabels
 
 
-procedure TFrmMain.updateDocuments(limit,offset:Integer);
+procedure TFrmMain.updateDocuments(limit: Integer = -1; offset:Integer = -1);
 begin
+  if limit=-1 then limit:=picsPerCol*picsPerCol;
+  if offset=-1 then offset:=pageNo-1;
   ItemsForSelectedTags:=GetItemsFor(selectedTags,chkMatchAll.checked,limit,offset);
   showFileinfos(ItemsForSelectedTags);
 end;
@@ -688,36 +674,30 @@ var
 begin
   lastLabel:=nil;
   h:=0;
-  for i:=0 to TagCloud.ComponentCount-1 do
-  begin
+  for i:=0 to TagCloud.ComponentCount-1 do begin
     tag:=TLabel(TagCloud.Components[i]);
-    if tag.Visible then
-    begin
-      if lastLabel=nil then
-        begin
+    if tag.Visible then begin
+      if lastLabel=nil then begin
           tag.Top:=marginTop;
           tag.Left:=marginLeft;
           h:=tag.height;
+      end
+      else begin
+        h:=max(h,lastLabel.Height);
+        l:=lastLabel.Left+lastLabel.width+colPadding;
+        t:=lastLabel.Top;
+        voffset:=0; // zur schöneren vertikalen Ausrichtung zweier benachbarter stark unterschiedlich großer Tags
+        if l+tag.width > tag.Parent.Width then begin
+          l:=marginLeft;
+          t:=t+h+rowPadding;
+          h:=0;
         end
-      else
-        begin
-          h:=max(h,lastLabel.Height);
-          l:=lastLabel.Left+lastLabel.width+colPadding;
-          t:=lastLabel.Top;
-          voffset:=0; // zur schöneren vertikalen Ausrichtung zweier benachbarter stark unterschiedlich großer Tags
-          if l+tag.width > tag.Parent.Width then
-            begin
-              l:=marginLeft;
-              t:=t+h+rowPadding;
-              h:=0;
-            end
-          else
-            begin
-              voffset:=floor(lastLabel.Height-tag.height) div 2;
-            end;
-          tag.Left:=l;
-          tag.Top:=t+voffset;
+        else begin
+          voffset:=floor(lastLabel.Height-tag.height) div 2;
         end;
+        tag.Left:=l;
+        tag.Top:=t+voffset;
+      end;
       lastLabel:=tag;
     end;
   end;
@@ -732,17 +712,17 @@ var
 begin
   result:='';
   try
-      DCP_sha256.Init;
-      DCP_sha256.UpdateStr(s);
-      SetLength(HashDigest,DCP_sha256.HashSize div 8);
-      DCP_sha256.Final(HashDigest[0]);  // get the output
-      s := '';
-      for j := 0 to Length(HashDigest) - 1 do  // convert it into a hex string
-        s := s + IntToHex(HashDigest[j],2);
-      result:=lowercase(s);  // <--- SQLite3 ist case-sensitive!
-    except
-      MessageDlg('An error occurred while reading the file',mtError,[mbOK],0);
-    end;
+    DCP_sha256.Init;
+    DCP_sha256.UpdateStr(s);
+    SetLength(HashDigest,DCP_sha256.HashSize div 8);
+    DCP_sha256.Final(HashDigest[0]);  // get the output
+    s := '';
+    for j := 0 to Length(HashDigest) - 1 do  // convert it into a hex string
+      s := s + IntToHex(HashDigest[j],2);
+    result:=lowercase(s);  // <--- SQLite3 ist case-sensitive!
+  except
+    MessageDlg('An error occurred while reading the file',mtError,[mbOK],0);
+  end;
 end;
 
 function TFrmMain.GetFilesize(path_file:string): Integer;
@@ -756,41 +736,41 @@ begin
 end;
 
 function TFrmMain.GetSha2(filename:String): String;
-  var
-    strmInput: TFileStream;
-    HashDigest: array of byte;
-    j, read: integer;
-    s: string;
-    buffer: array[0..16383] of byte;
-  begin
-    try
-      DCP_sha256.Init;
-      strmInput := TFileStream.Create(filename,fmOpenRead);
-      repeat
-        read := strmInput.Read(buffer,Sizeof(buffer));
-        DCP_sha256.Update(buffer,read);
-      until read <> Sizeof(buffer);
-      strmInput.Free;
-      SetLength(HashDigest,DCP_sha256.HashSize div 8);
-      DCP_sha256.Final(HashDigest[0]);  // get the output
-      s := '';
-      for j := 0 to Length(HashDigest) - 1 do  // convert it into a hex string
-        s := s + IntToHex(HashDigest[j],2);
-      result:=lowercase(s);  // <--- SQLite3 ist case-sensitive!
-    except
-      strmInput.Free;
-      MessageDlg('An error occurred while reading the file',mtError,[mbOK],0);
+var
+  strmInput: TFileStream;
+  HashDigest: array of byte;
+  j, read: integer;
+  s: string;
+  buffer: array[0..16383] of byte;
+begin
+  try
+    DCP_sha256.Init;
+    strmInput := TFileStream.Create(filename,fmOpenRead);
+    repeat
+      read := strmInput.Read(buffer,Sizeof(buffer));
+      DCP_sha256.Update(buffer,read);
+    until read <> Sizeof(buffer);
+    strmInput.Free;
+    SetLength(HashDigest,DCP_sha256.HashSize div 8);
+    DCP_sha256.Final(HashDigest[0]);  // get the output
+    s := '';
+    for j := 0 to Length(HashDigest) - 1 do  // convert it into a hex string
+      s := s + IntToHex(HashDigest[j],2);
+    result:=lowercase(s);  // <--- SQLite3 ist case-sensitive!
+  except
+    strmInput.Free;
+    MessageDlg('An error occurred while reading the file',mtError,[mbOK],0);
   end;
 end;
 
 
 function TFrmMain.StringToArrayOfBytes(s:String):TByteArray;
 var
-   j: integer;
+  j: integer;
 begin
-   SetLength(Result, Length(s)) ;
-   for j := 0 to Length(s) - 1 do
-     Result[j] := ord(s[j + 1]) - 48;
+  SetLength(Result, Length(s)) ;
+  for j := 0 to Length(s) - 1 do
+    Result[j] := ord(s[j + 1]) - 48;
 end;
 
 //procedure TFrmMain.alert(s:String);
@@ -804,26 +784,25 @@ begin
   TabControl1.width:=FrmMain.Width div 2 -25;
   TagCloud.left:=TabControl1.width+TabControl1.left+25;
   arrangeTagCloud;
-  updatePreviews;
+  //updatePreviews;
+  arrangePreviews;
 end;
 
 procedure TFrmMain.TrackBar1Change(Sender: TObject);
 var newLimit: Integer;
 begin
-  if not TrackBar1.Dragging then
-    begin
-      sltb:=sldb.GetTable('select count(*) as anz from tags');
-      newLimit:=floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*Trackbar1.Position/TrackBar1.max);
-      reloadTagCloud(newLimit);
-    end;
+  if not busyReloading then begin
+    sltb:=sldb.GetTable('SELECT COUNT(*) AS anz FROM tags');
+    newLimit:=floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*Trackbar1.Position/TrackBar1.max);
+    reloadTagCloud(newLimit);
+  end;
 end;
 
 function TFrmMain.quoteConcatStrList(s:TStringlist): string;
 var i: Integer;
 begin
   result:='';
-  for i:=0 to s.Count-1 do
-  begin
+  for i:=0 to s.Count-1 do begin
     if result='' then
       result:='"'+s[i]+'"'
     else
@@ -840,29 +819,26 @@ begin
 // Zeile 2: String:  Pfad zur Thumb-DB-Datei
 // Zeile 3: Integer: picsPerCol
   fn:=ExtractFilepath(application.exename)+ 'tgit.ini';
-  if fileExists(fn) then
-    begin
-      AssignFile(f,fn);
-      Reset(f);
-      readln(f,sldbpath);
-      if not EOF(f) then
-        readln(f,thumbDBPath);
-      if not EOF(f) then
-        begin
-          readln(f,buff);
-          if buff<>'' then picsPerCol:=strtoint(buff);
-        end;
-      closeFile(f);
+  if fileExists(fn) then begin
+    AssignFile(f,fn);
+    Reset(f);
+    readln(f,sldbpath);
+    if not EOF(f) then
+      readln(f,thumbDBPath);
+    if not EOF(f) then begin
+      readln(f,buff);
+      if buff<>'' then picsPerCol:=strtoint(buff);
     end;
+    closeFile(f);
+  end;
 end;
 
 procedure TFrmMain.Datenbankwhlen1Click(Sender: TObject);
 begin
-  if OpenDialog1.execute then
-    begin
-      slDBPath := OpenDialog1.FileName;
-      openDB(true);
-    end;
+  if OpenDialog1.execute then begin
+    slDBPath := OpenDialog1.FileName;
+    openDB(true);
+  end;
 end;
 
 procedure TFrmMain.humbDBwhlen1Click(Sender: TObject);
@@ -896,7 +872,7 @@ begin
     unselectTag(clickedTagName)
   else
     selectTag(clickedTagName);
-  updateDocuments(picsPerCol*picsPerCol,pageNo-1);
+  updateDocuments();
   clearTagcloud;
   showTagCloud(GetTagcloud(0));
   edtTagFilter.text:='';
@@ -919,18 +895,6 @@ begin
 //  updateDocumentList();
 end;
 
-
-//function TFrmMain.file_location_find_by_id(id:String):TFileLocation;
-//var
-//  tbl: TSQLiteTable;
-//begin
-//  tbl:=sldb.GetTable('SELECT * FROM file_locations WHERE id='+id+' LIMIT 1');
-//  if not tbl.EOF then
-//    result:=TFileLocation.create(tbl.GetRow)
-//  else
-//    result:=nil;
-//end;
-
 procedure TFrmMain.StringGrid2SelectCell(Sender: TObject; ACol,
   ARow: Integer; var CanSelect: Boolean);
 var
@@ -940,22 +904,15 @@ var
 begin
   i:=3;
   found:=false;
-  while (not found) and (i<StringGrid2.ColCount) do
-    begin
-      fpath:=StringGrid2.cells[i,ARow];
-      if fileExists(fpath) then
-        begin
-          found:=true;
-          //REDO: LoadImage(Image1,fpath,0);
-        end
-      else
-        i:=i+1;
-    end;
-end;
-
-// gibt bei Erfolg true zurück
-function TFrmMain.DoLoad(var img:TImage;const FileName: String):Boolean;
-begin
+  while (not found) and (i<StringGrid2.ColCount) do begin
+    fpath:=StringGrid2.cells[i,ARow];
+    if fileExists(fpath) then begin
+      found:=true;
+      //REDO: LoadImage(Image1,fpath,0);
+    end
+    else
+      i:=i+1;
+  end;
 end;
 
 procedure TFrmMain.N11Click(Sender: TObject);
@@ -1042,30 +999,20 @@ end;
 
 procedure TFrmMain.ButtonBackClick(Sender: TObject);
 begin
-dec(pageNo);
-updatePreviews;
-if(pageNo<=1) then ButtonBack.Enabled:=false;
+  dec(pageNo);
+  updatePreviews;
+  if(pageNo<=1) then ButtonBack.Enabled:=false;
 end;
 
 procedure TFrmMain.ButtonNextClick(Sender: TObject);
 begin
-inc(pageNo);
-updatePreviews;
-if(pageNo>1) then ButtonBack.Enabled:=true;
+  inc(pageNo);
+  updatePreviews;
+  if(pageNo>1) then ButtonBack.Enabled:=true;
 end;
 
 function TFrmMain.LoadImage(var img: TImage; fi: TFileinfo; angle: Integer):Boolean;
 var
-  dib,dib2,tmp : PFIBITMAP;
-  PBH : PBITMAPINFOHEADER;
-  PBI : PBITMAPINFO;
-  t : FREE_IMAGE_FORMAT;
-  Ext : string;
-  BM : TBitmap;
-  DC : HDC;
-  jp : TJPEGImage;
-  data: TMemoryStream;
-  tbl: TSQLiteTable;
   fpath: string;
 begin
   result:=true;
@@ -1073,89 +1020,7 @@ begin
   if fpath='' then
     result:=false
   else
-  try
-    t := FreeImage_GetFileType(PChar(fpath), 16);
-     if t = FIF_UNKNOWN then
-    begin
-      // Check for types not supported by GetFileType
-      Ext := UpperCase(ExtractFileExt(fpath));
-      if (Ext = '.TGA') or(Ext = '.TARGA') then
-        t := FIF_TARGA
-      else if Ext = '.MNG' then
-        t := FIF_MNG
-      else if Ext = '.PCD' then
-        t := FIF_PCD
-      else if Ext = '.WBMP' then
-        t := FIF_WBMP
-      else if Ext = '.CUT' then
-        t := FIF_CUT
-      else
-        raise Exception.Create('The file "' + fpath + '" cannot be displayed because SFM does not recognise the file type.');
-    end;
-
-    dib := FreeImage_Load(t, PChar(fpath), 0);
-    tmp:=dib;
-    if importingThumbs then
-      dib2 := FreeImage_MakeThumbnail(dib,200)
-    else
-      dib2 := FreeImage_MakeThumbnail(dib,img.Width);
-
-    dib:=dib2;
-    FreeImage_unload(tmp);
-
-    tmp:=dib;
-    dib2 := FreeImage_RotateClassic(dib,angle);
-    dib:=dib2;
-    FreeImage_unload(tmp);
-
-    if Dib = nil then
-      Close;
-    PBH := FreeImage_GetInfoHeader(dib);
-    PBI := FreeImage_GetInfo(dib^);
-
-    begin
-      BM := TBitmap.Create;
-
-      BM.Assign(nil);
-      DC := GetDC(Handle);
-
-      BM.handle := CreateDIBitmap(DC,
-        PBH^,
-        CBM_INIT,
-        PChar(FreeImage_GetBits(dib)),
-        PBI^,
-        DIB_RGB_COLORS);
-
-      Img.picture.Bitmap.Assign(BM);
-
-      // Thumb in der Datenbank speichern:
-      // falls noch nicht vorhanden:
-      tbl:=thumbsdb.GetTable('SELECT data FROM thumbs WHERE fileinfo_id="'+inttostr(fi.id)+'" LIMIT 1');
-      if (tbl.RowCount=0) and (true or (pos('no_disk.jpg',fpath)=0)) then
-      begin
-        jp:=TJPEGImage.create;
-        jp.Assign(Img.Picture.Bitmap);
-        jp.CompressionQuality:=50;
-        jp.compress;
-        data:=TMemoryStream.create;
-        jp.SaveToStream(data);
-        thumbsdb.UpdateBlob('INSERT INTO thumbs (fileinfo_id,data) VALUES ("'+inttostr(fi.id)+'", ?)',data);
-        data.Free;
-      end;
-
-      BM.Free;
-      ReleaseDC(Handle, DC);
-    end;
-    FreeImage_Unload(dib);
-  except
-    result:=false;
-//  on e:exception do
-//  begin
-//    Application.BringToFront;
-//    MessageDlg(e.message, mtInformation, [mbOK], 0);
-//    Close;
-//  end;
-  end;
+    result:=doLoadImage(fpath,img,0,fi,sldb,thumbsdb,importingThumbs);
 end;
 
 
@@ -1207,18 +1072,16 @@ begin
   h:=THash.create;
   ProgressThumbCreate.min:=0;
   ProgressThumbCreate.max:=tbl.RowCount;
-  while not tbl.eof do
-  begin
+  while not tbl.eof do begin
     row:=tbl.GetRow;
     f:=TFileinfo.create(sldb,row,true);
     row.free;
-    if h.GetString(inttostr(f.id))<>'1' then
-      begin
-        h.SetString(inttostr(f.id),'1');
-        curFileinfos.add(f);
-      end;
-    if f.getAccessibleLocation(selectedCDROMDrive, selectedUSBDrive)<>''
-    then LoadImage(image1,f,0);
+    if h.GetString(inttostr(f.id))<>'1' then begin
+      h.SetString(inttostr(f.id),'1');
+      curFileinfos.add(f);
+    end;
+    if f.getAccessibleLocation(selectedCDROMDrive, selectedUSBDrive)<>'' then
+      LoadImage(image1,f,0);
     tbl.Next;
     ProgressThumbCreate.StepIt;
     application.ProcessMessages;
@@ -1232,19 +1095,10 @@ procedure TFrmMain.edtTagFilterChange(Sender: TObject);
 begin
  filterTagCloud();
 end;
+
 procedure TFrmMain.FilterTagCloud;
-var
-  i: Integer;
-  lbl: TLabel;
 begin
-  for i:=0 to TagCloud.ControlCount-1 do
-    begin
-      lbl:=TLabel(TagCloud.Controls[i]);
-      if (edtTagFilter.text<>'') and (pos(lowercase(edtTagFilter.text),lowercase(lbl.caption))=0) then
-        lbl.hide
-      else
-        lbl.show;
-    end;
+  reloadTagCloud(-1,edtTagFilter.text);
   arrangeTagCloud;
 end;
 
@@ -1257,16 +1111,13 @@ begin
   exact:=nil;
   at_beginning:=nil;
   in_middle:=nil;
-  if Key=Char(VK_RETURN) then
-  begin
+  if Key=Char(VK_RETURN) then begin
     filter:=lowercase(edtTagFilter.Text);
     // exakten Match suchen (bis auf case-Sensitivity):
-    for i:=0 to TagCloud.Controlcount-1 do
-    begin
+    for i:=0 to TagCloud.Controlcount-1 do begin
       a_label:=TLabel(TagCloud.Controls[i]);
       tag:=lowercase(a_label.caption);
-      if tag=filter then
-      begin
+      if tag=filter then begin
         exact:=a_label;
         break;
       end
@@ -1276,7 +1127,7 @@ begin
         else
           if (in_middle=nil) and (pos(filter,tag)>0) then
             in_middle:=a_label;
-    end;
+    end; // end for
     if exact<>nil then
       exact.OnClick(exact)
     else
@@ -1288,6 +1139,7 @@ begin
   end;
 end;
 
+
 function TFrmMain.getDriveLetters(): TCharArray;
 var
   i,j,bits : integer;
@@ -1296,29 +1148,32 @@ const
 begin
   j:=0;
   bits := getLogicalDrives();
-  for i:=1 to 26 do
-  begin
-    if inttobin(bits)[32-i+1]='1'
-    then begin
-           setlength(result,length(result)+1);
-           result[length(result)-1]:=abc[i];
-         end;
+  for i:=1 to 26 do begin
+    if inttobin(bits)[32-i+1]='1' then begin
+      setlength(result,length(result)+1);
+      result[length(result)-1]:=abc[i];
+    end;
   end;
 end;
 
+{
+ verfügbare Laufwerke herausfinden:
+ * DWORD GetLogicalDrives()
+ * DWORD GetLogicalDriveStrings( DWORD nBufferLength, LPTSTR lpBuffer )
+ * UINT GetDriveType( LPCTSTR lpRootPathName )
+
+ 0	The drive type cannot be determined.
+ 1	The root directory does not exist.
+ DRIVE_REMOVABLE	The drive can be removed from the drive.
+ DRIVE_FIXED	The disk cannot be removed from the drive.
+ DRIVE_REMOTE	The drive is a remote (network) drive.
+ DRIVE_CDROM	The drive is a CD-ROM drive.
+ DRIVE_RAMDISK	The drive is a RAM disk.
+}
 function TFrmMain.getDriveTypeOf(drv:Char):string;
 var
  s: string;
 begin
-{
-0	The drive type cannot be determined.
-1	The root directory does not exist.
-DRIVE_REMOVABLE	The drive can be removed from the drive.
-DRIVE_FIXED	The disk cannot be removed from the drive.
-DRIVE_REMOTE	The drive is a remote (network) drive.
-DRIVE_CDROM	The drive is a CD-ROM drive.
-DRIVE_RAMDISK	The drive is a RAM disk.
-}
   s:=drv+':';
   case GetDriveType(PChar(s)) of
   0 : result:='unknown type';
@@ -1341,14 +1196,12 @@ var
  i: integer;
 begin
   arr:=getDriveLetters;
-  for i:=0 to length(arr)-1 do
-  begin
+  for i:=0 to length(arr)-1 do begin
     s:=arr[i]+':';
-    if GetDriveType(PChar(s)) = typ then
-      begin
-        setlength(result,length(result)+1);
-        result[length(result)-1]:=arr[i];
-      end;
+    if GetDriveType(PChar(s)) = typ then begin
+      setlength(result,length(result)+1);
+      result[length(result)-1]:=arr[i];
+    end;
   end;
 end;
 
@@ -1375,28 +1228,25 @@ procedure TFrmMain.makeDriveLetterMenus;
 begin
   typs[0]:=DRIVE_CDROM;
   typs[1]:=666;
-  for k:=0 to length(typs)-1 do
-    begin
-      if typs[k]=666 then
-        arr:=getDriveLetters
-      else
-        arr:=getDrivesOfType(typs[k]);
-      for i:=0 to length(arr)-1 do
-        begin
-          t:=TMenuItem.Create(MainMenu1);
-          with t do
-            begin
-              Caption:=arr[i]+':\';
-              GroupIndex:=2;
-              RadioItem:=true;
-              if typs[k]=DRIVE_CDROM then
-                OnClick:=selectCDROM
-              else
-                if typs[k]=666 then OnClick:=selectUSB;
-            end;
-          Mainmenu1.Items[3].Items[2+k].add(t);
-        end;
+  for k:=0 to length(typs)-1 do begin
+    if typs[k]=666 then
+      arr:=getDriveLetters
+    else
+      arr:=getDrivesOfType(typs[k]);
+    for i:=0 to length(arr)-1 do begin
+      t:=TMenuItem.Create(MainMenu1);
+      with t do begin
+        Caption:=arr[i]+':\';
+        GroupIndex:=2;
+        RadioItem:=true;
+        if typs[k]=DRIVE_CDROM then
+          OnClick:=selectCDROM
+        else
+          if typs[k]=666 then OnClick:=selectUSB;
+      end;
+      Mainmenu1.Items[3].Items[2+k].add(t);
     end;
+  end;
 end;
 
 procedure TFrmMain.selectCDROM(Sender: TObject);
@@ -1439,8 +1289,7 @@ end;
 
 procedure TFrmMain.Button10Click(Sender: TObject);
 begin
-  with FrmAddFiles do
-  begin
+  with FrmAddFiles do begin
     Hide;
     edtInitialTags.Text:='';
   end;
@@ -1454,11 +1303,49 @@ begin
   finally
     Free;
   end;
+  updateDocuments;
+  reloadTagCloud;
 end;
 
+procedure TFrmMain.Schlagwortendern1Click(Sender: TObject);
+begin
+  with TFrmEditTags.Create(self) do
+  try
+    ShowModal;
+  finally
+    Free;
+  end;
+end;
 
+// Wenn das Popup-Menu aufgemacht wird, wird dynamisch das Untermenu
+// mit den Tags der angeklickten Preview erzeugt. Die Tags können somit über das
+// Kontextmenu entfernt werden!
+procedure TFrmMain.PopupPreviewPopup(Sender: TObject);
+var
+  i: Integer;
+  fi: TFileinfo;
+  tags: TObjectList;
+  subm,mi: TMenuItem;
+begin
+  fi:=TPreview(clickedPreview).fileinfo;
+  tags:=fi.getTags;
+  subm:=TPopupMenu(Sender).items[1];
+  if subm.count>0 then subm.Clear;
+  for i:=0 to tags.Count-1 do begin
+    mi:=TTagMenuItem.create(subm,tags[i]);
+    with mi do begin
+      GroupIndex:=1;
+      OnClick:=doRemoveTag;
+    end;
+    subm.add(mi);
+  end;
+end;
 
-
+procedure TFrmMain.doRemoveTag(Sender:TObject);
+begin
+  TPreview(clickedPreview).fileinfo.removeTagID(TTagMenuItem(Sender).tag.id);
+  updateDocuments;
+end;
 
 end.
 

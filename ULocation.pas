@@ -2,7 +2,7 @@ unit ULocation;
 
 interface
 
-uses Hashes,sysutils,SQLiteTable3;
+uses Hashes,sysutils,SQLiteTable3,UHelper;
 
 type
 
@@ -11,10 +11,12 @@ type
   TLocation = class(TObject)
 
   public
-    loc_id, location_id: integer;
+    id, location_id: integer;
     loc_type, name, description, located : String;
+    sldb: TSQLiteDatabase;
+    constructor create(db: TSQLiteDatabase; fields: THash);
+    class function db_find(db:TSQLiteDatabase; id: Integer):TLocation;
     class function all(db:TSQLiteDatabase) : TObjectArray;
-
   private
 
   end;
@@ -22,18 +24,51 @@ type
 implementation
 
 
+constructor TLocation.create(db: TSQLiteDatabase; fields: THash);
+var
+  sid,lid: String;
+begin
+  sid:=fields.GetString('ID');
+  if sid='' then begin
+    alert('FEHLER: ID ist leer');
+    self.Free;
+  end
+  else begin
+    sldb:=db;
+    id:=strtoint(sid);
+    loc_type:=UTF8Decode(fields.GetString('TYPE'));
+    name:=UTF8Decode(fields.GetString('NAME'));
+    description:=UTF8Decode(fields.GetString('DESCRIPTION'));
+    located:=UTF8Decode(fields.GetString('LOCATED'));
+    lid:=fields.GetString('LOCATION_ID');
+    if lid<>'' then location_id:=strtoint(lid);
+  end;
+end;
+
+
+class function TLocation.db_find(db:TSQLiteDatabase; id: Integer):TLocation;
+var
+  tbl: TSQLiteTable;
+begin
+  tbl:=db.GetTable('SELECT * FROM locations WHERE id="'+inttostr(id)+'"');
+  if tbl.Count>0 then begin
+    result:=TLocation.create(db,tbl.getRow);
+  end
+  else begin
+    alert('Location '+inttostr(id)+' nicht gefunden!');
+  end;
+end;
+
 class function TLocation.all(db:TSQLiteDatabase) : TObjectArray;
 var
   tbl : TSQLiteTable;
   l: TLocation;
+  lid: string;
 begin
-  tbl:=db.GetTable('select * from locations order by name asc');
-  while(not tbl.EOF) do
-  begin
-    l:=TLocation.create();
-    l.loc_id:=tbl.FieldAsInteger(tbl.FieldIndex['ID']);
-    l.name:=tbl.FieldAsString(tbl.FieldIndex['NAME']);
-    l.description:=tbl.FieldAsString(tbl.FieldIndex['DESCRIPTION']);
+  tbl:=db.GetTable('SELECT * FROM locations ORDER BY name ASC');
+  while(not tbl.EOF) do begin
+    lid:=tbl.getRow().getString('ID');
+    l:=TLocation.db_find(db,strtoint(lid));
     setlength(result, length(result)+1);
     result[length(result)-1]:=l;
     tbl.Next;
