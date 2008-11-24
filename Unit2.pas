@@ -3,7 +3,7 @@ unit Unit2;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  IdGlobalProtocols,Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, SQLiteTable3, ComCtrls, Grids, StringItWell,
   DCPcrypt2, DCPsha256, Math, TabNotBk, ExtCtrls, Menus, Hashes, Contnrs,
   ExtDlgs, FreeBitmap, DBTables,

@@ -1,9 +1,9 @@
 object FrmMain: TFrmMain
-  Left = 244
-  Top = 84
-  Width = 1147
-  Height = 871
+  Left = 240
+  Top = 66
   Caption = 'Tgit GUI'
+  ClientHeight = 825
+  ClientWidth = 1139
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -41,6 +41,7 @@ object FrmMain: TFrmMain
     000000000000000000000000000000000000000000000000000000000000}
   Menu = MainMenu1
   OldCreateOrder = False
+  Position = poDesigned
   WindowState = wsMaximized
   OnCreate = FormCreate
   OnDestroy = FormDestroy
@@ -52,11 +53,12 @@ object FrmMain: TFrmMain
   TextHeight = 13
   object Label1: TLabel
     Left = 8
-    Top = 782
+    Top = 763
     Width = 32
     Height = 13
     Anchors = [akLeft, akBottom]
     Caption = 'Label1'
+    ExplicitTop = 782
   end
   object lblLimitTags: TLabel
     Left = 606
@@ -67,13 +69,14 @@ object FrmMain: TFrmMain
   end
   object Image1: TImage
     Left = 357
-    Top = 654
+    Top = 635
     Width = 228
     Height = 145
     Anchors = [akLeft, akBottom]
     Center = True
     Proportional = True
     Stretch = True
+    ExplicitTop = 654
   end
   object lblFilterTags: TLabel
     Left = 608
@@ -117,19 +120,13 @@ object FrmMain: TFrmMain
     Height = 25
     Max = 30
     Min = 1
-    Orientation = trHorizontal
-    Frequency = 1
     Position = 15
-    SelEnd = 0
-    SelStart = 0
     TabOrder = 2
-    TickMarks = tmBottomRight
-    TickStyle = tsAuto
     OnChange = TrackBar1Change
   end
   object edtQuery: TEdit
     Left = 8
-    Top = 803
+    Top = 784
     Width = 569
     Height = 21
     Anchors = [akLeft, akBottom]
@@ -158,7 +155,7 @@ object FrmMain: TFrmMain
     Left = 0
     Top = 52
     Width = 569
-    Height = 599
+    Height = 580
     Anchors = [akLeft, akTop, akBottom]
     Constraints.MinHeight = 300
     Constraints.MinWidth = 400
@@ -174,7 +171,7 @@ object FrmMain: TFrmMain
       Left = 4
       Top = 4
       Width = 542
-      Height = 591
+      Height = 572
       Align = alClient
       TabOrder = 0
       Visible = False
@@ -182,7 +179,7 @@ object FrmMain: TFrmMain
         Left = 1
         Top = 1
         Width = 540
-        Height = 589
+        Height = 570
         Align = alClient
         DefaultColWidth = 180
         DefaultRowHeight = 16
@@ -195,15 +192,15 @@ object FrmMain: TFrmMain
       Left = 4
       Top = 4
       Width = 542
-      Height = 591
+      Height = 572
       Align = alClient
       TabOrder = 1
       DesignSize = (
         542
-        591)
+        572)
       object ButtonBack: TButton
         Left = 320
-        Top = 558
+        Top = 539
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
@@ -214,7 +211,7 @@ object FrmMain: TFrmMain
       end
       object ButtonNext: TButton
         Left = 424
-        Top = 558
+        Top = 539
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
@@ -226,13 +223,13 @@ object FrmMain: TFrmMain
         Left = 1
         Top = 1
         Width = 540
-        Height = 552
+        Height = 533
         Anchors = [akLeft, akTop, akRight, akBottom]
         TabOrder = 2
       end
       object ChkShowAccessablesOnly: TCheckBox
         Left = 8
-        Top = 563
+        Top = 544
         Width = 177
         Height = 17
         Anchors = [akLeft, akBottom]
@@ -251,7 +248,7 @@ object FrmMain: TFrmMain
   end
   object btnCreateAllThumbs: TButton
     Left = 8
-    Top = 726
+    Top = 707
     Width = 105
     Height = 25
     Anchors = [akLeft, akBottom]
@@ -261,12 +258,10 @@ object FrmMain: TFrmMain
   end
   object ProgressThumbCreate: TProgressBar
     Left = 8
-    Top = 758
+    Top = 739
     Width = 105
     Height = 16
     Anchors = [akLeft, akBottom]
-    Min = 0
-    Max = 100
     Step = 1
     TabOrder = 9
   end
@@ -290,7 +285,7 @@ object FrmMain: TFrmMain
   end
   object Button7: TButton
     Left = 8
-    Top = 654
+    Top = 635
     Width = 89
     Height = 25
     Anchors = [akLeft, akBottom]
