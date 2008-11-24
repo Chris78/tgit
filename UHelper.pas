@@ -37,7 +37,7 @@ begin
   handle:=0;
   result:=true;
   try
-    t := FreeImage_GetFileType(PChar(fpath), 16);
+    t := FreeImage_GetFileTypeU(PWideChar(fpath), 16);
     if t = FIF_UNKNOWN then begin
       // Check for types not supported by GetFileType
       Ext := UpperCase(ExtractFileExt(fpath));
@@ -55,7 +55,7 @@ begin
         raise Exception.Create('The file "' + fpath + '" cannot be displayed because SFM does not recognise the file type.');
     end;
 
-    dib := FreeImage_Load(t, PChar(fpath), 0);
+    dib := FreeImage_LoadU(t, PWideChar(fpath), 0);
     tmp:=dib;
     if importingThumbs then
       dib2 := FreeImage_MakeThumbnail(dib,200)
