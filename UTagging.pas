@@ -13,6 +13,8 @@ type
     tag: TTag;
     taggable: TObject;
 
+    function tgg_destroy():Boolean;
+
     constructor create(db: TSQLiteDatabase; fields: THash);
     class function db_find(db: TSQLiteDatabase; id: Integer): TTagging;
     class function db_find_by_tag_id(db: TSQLiteDatabase; tag_id: Integer): TObjectList;
@@ -21,11 +23,25 @@ type
     class procedure db_delete_by_taggable_type_and_taggable_id_and_tag_id(db: TSQLiteDatabase; taggable_type: String; taggable_id,tag_id: Integer);
 
   private
-    sldb: TSQLiteDatabase;    
+    sldb: TSQLiteDatabase;
   end;
 
 implementation
 
+
+function TTagging.tgg_destroy():Boolean;
+var
+  tggs: TObjectList;
+begin
+  try
+    sldb.ExecSQL('DELETE FROM taggings WHERE id='+inttostr(self.id));
+    tggs:=db_find_by_tag_id(sldb,self.tag_id);
+    if tggs.count=0 then TTag.db_delete(sldb,tag_id);
+    result:=true;
+  finally
+    result:=false;
+  end;
+end;
 
 // =============================================================================
 //                             Klassen-Methoden
@@ -100,12 +116,10 @@ class procedure TTagging.db_delete_by_taggable_type_and_taggable_id_and_tag_id(d
 var
   tggs: TObjectList;
 begin
- db.ExecSQL('DELETE FROM taggings WHERE taggable_type="'+UTF8Encode(taggable_type)+'" AND taggable_id="'+inttostr(taggable_id)+'" AND tag_id="'+inttostr(tag_id)+'"');
  try
+   db.ExecSQL('DELETE FROM taggings WHERE taggable_type="'+UTF8Encode(taggable_type)+'" AND taggable_id="'+inttostr(taggable_id)+'" AND tag_id="'+inttostr(tag_id)+'"');
    tggs:=db_find_by_tag_id(db,tag_id);
-   if tggs.count=0 then begin
-     TTag.db_delete(db,tag_id);   
-   end;
+   if tggs.count>0 then TTag.db_delete(db,tag_id);
  finally
    tggs.Free;
  end;

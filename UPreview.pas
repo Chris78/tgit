@@ -15,8 +15,9 @@ type
   private
   public
     filepath: String;  // ein "accessible Path" sofern es einen gibt
+    index: Integer;
     function getFilepath():string;
-    constructor create(mForm:TForm; aOwner:TComponent; aFileinfo: TFileinfo);
+    constructor create(mForm:TForm; aOwner:TComponent; aFileinfo: TFileinfo; aIndex: Integer);
   end;
 
 
@@ -30,8 +31,9 @@ begin
   result:=filepath;
 end;
 
-constructor TPreview.create(mForm:TForm; aOwner:TComponent; aFileinfo: TFileinfo);
+constructor TPreview.create(mForm:TForm; aOwner:TComponent; aFileinfo: TFileinfo; aIndex: Integer);
 begin
+  index:=aIndex; // der Index des zugehörigen Fileinfo-Objects in curFileinfos
   fileinfo:=aFileinfo;
   parent:=TObject(aOwner);
   mainForm:=TObject(mForm);

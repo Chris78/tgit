@@ -107,7 +107,6 @@ var
   data: TMemoryStream;
   tbl: TSQLiteTable;
 begin
-if false then begin // REDO!!
   tbl:=thumbsdb.GetTable('SELECT data FROM thumbs WHERE fileinfo_id="'+inttostr(TFileinfo(fi).id)+'" LIMIT 1');
   if (tbl.RowCount=0) then begin
     jp:=TJPEGImage.create;
@@ -119,7 +118,6 @@ if false then begin // REDO!!
     thumbsdb.UpdateBlob('INSERT INTO thumbs (fileinfo_id,data) VALUES ("'+inttostr(TFileinfo(fi).id)+'", ?)',data);
     data.Free;
   end;
-end;  
 end;
 
 end.

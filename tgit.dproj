@@ -63,6 +63,7 @@
 				<Form>frmEditTags</Form>
 			</DCCReference>
 			<DCCReference Include="UTagMenuItem.pas"/>
+			<DCCReference Include="AVCodec.pas"/>
 			<BuildConfiguration Include="Basis">
 				<Key>Base</Key>
 			</BuildConfiguration>

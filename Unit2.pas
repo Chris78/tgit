@@ -13,7 +13,8 @@ uses
   UHelper,
   //GraphicEx,
   jpeg, UJPGStreamFix, 
-  ShellAPI, UPreview, MPlayer, ShellCtrls, IdGlobal;
+  ShellAPI, UPreview, MPlayer, ShellCtrls, IdGlobal,
+  AVCodec;
 
 const
   rowPadding=2;
@@ -157,6 +158,7 @@ type
     procedure Schlagwortendern1Click(Sender: TObject);
     procedure PopupPreviewPopup(Sender: TObject);
     procedure doRemoveTag(Sender:TObject);
+    procedure DateiausderDatenbankentfernen1Click(Sender: TObject);
   private
     { Private declarations }
     importingThumbs,busyReloading: Boolean;
@@ -193,8 +195,8 @@ type
 
     // Previews:
     procedure clearPreviews;
-    function  GetItemsFor(tags: TStringList; match_all:Boolean; limit,offset:Integer): TObjectList;
-    function  renderPreview(fi:TFileinfo):Boolean;
+    function  GetItemsFor(tags: TStringList; match_all:Boolean): TObjectList;
+    function  renderPreview(fi:TFileinfo;index:Integer):Boolean;
     procedure updatePreviews;
     procedure arrangePreviews();
     procedure previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
@@ -232,6 +234,7 @@ uses FreeImage;
 
 procedure TFrmMain.FormCreate(Sender: TObject);
 begin
+  av_register_all;
   importingThumbs:=false;
   busyReloading:=false;
   // Settings setzen (Defaults)
@@ -282,8 +285,7 @@ begin
 end;
 
 // Holt die Dokumente zu den angegebenen tags.
-//function TFrmMain.GetItemsFor(tags:TStringList; match_all: Boolean):TSQLiteTable;
-function TFrmMain.GetItemsFor(tags:TStringList; match_all: Boolean; limit,offset:Integer):TObjectList;
+function TFrmMain.GetItemsFor(tags:TStringList; match_all: Boolean):TObjectList;
 var
   idx: Integer;
   query,flid: String;
@@ -300,8 +302,7 @@ begin
          '   LEFT JOIN fileinfos on fileinfos.id=taggings.taggable_id AND taggings.taggable_type="Fileinfo" '+
          '   WHERE tags.name in ("'+UTF8Encode(AssembleItWell(tags,'","'))+'") '+
          '   GROUP BY fileinfos.id ';
-  if match_all then
-  begin
+  if match_all then begin
     query := query+' HAVING count(distinct tags.id)='+inttostr(tags.count);
   end;
   query:=query+') AS temp'+
@@ -311,16 +312,14 @@ begin
   tbl := slDb.GetTable(query);
   h:=THash.create;
 
-  while not tbl.eof do
-  begin
+  while not tbl.eof do begin
     r:=tbl.GetRow;
     f:=TFileinfo.create(sldb,r,true);
     r.free;
-    if h.GetString(inttostr(f.id))<>'1' then
-      begin
+    if h.GetString(inttostr(f.id))<>'1' then begin
         h.SetString(inttostr(f.id),'1');
         curFileinfos.add(f);
-      end;
+    end;
     tbl.Next;
   end;
   h.free;
@@ -360,6 +359,9 @@ begin
   updatePreviews;
 end;
 
+// Fragt nichts in der DB ab oder so, sondern ist nur für die Pagination zuständig.
+// Wird also von den Buttons BACK/NEXT aufgerufen, sowie dann, wenn im Menü eine
+// andere Anzahl von Bildern pro Spalte eingestellt wird.
 procedure TFrmMain.updatePreviews;
 var
   i,perPage,c,k: Integer;
@@ -374,7 +376,7 @@ begin
   c:=0;
   while (i<curFileinfos.Count) and (c<perPage) do begin
     fi:=TFileinfo(curFileinfos[i]);
-    if renderPreview(fi) then begin
+    if renderPreview(fi,i) then begin
       arrangePreviews();
       application.processMessages;
       inc(c);
@@ -383,7 +385,7 @@ begin
   end;
 end;
 
-function TFrmMain.renderPreview(fi:TFileinfo): Boolean;
+function TFrmMain.renderPreview(fi:TFileinfo; index:Integer): Boolean;
 var
   img: TImage;
   accessiblePath: String;
@@ -397,7 +399,7 @@ begin
     result:=false  // Falls das Bild nicht erreichbar ist und nicht-erreichbare nicht ausgegeben werden sollen
   else begin
     result:=true;
-    img:=TPreview.create(FrmMain,PanelPreviews,fi);
+    img:=TPreview.create(FrmMain,PanelPreviews,fi,index);
     with img do begin
       hide;
       stretch:=true;
@@ -658,7 +660,7 @@ procedure TFrmMain.updateDocuments(limit: Integer = -1; offset:Integer = -1);
 begin
   if limit=-1 then limit:=picsPerCol*picsPerCol;
   if offset=-1 then offset:=pageNo-1;
-  ItemsForSelectedTags:=GetItemsFor(selectedTags,chkMatchAll.checked,limit,offset);
+  ItemsForSelectedTags:=GetItemsFor(selectedTags,chkMatchAll.checked);
   showFileinfos(ItemsForSelectedTags);
 end;
 
@@ -1002,6 +1004,7 @@ begin
   dec(pageNo);
   updatePreviews;
   if(pageNo<=1) then ButtonBack.Enabled:=false;
+  if(pageNo*picsPerCol*picsPerCol<curFileinfos.Count) then ButtonNext.Enabled:=true;
 end;
 
 procedure TFrmMain.ButtonNextClick(Sender: TObject);
@@ -1009,6 +1012,7 @@ begin
   inc(pageNo);
   updatePreviews;
   if(pageNo>1) then ButtonBack.Enabled:=true;
+  if(pageNo*picsPerCol*picsPerCol>=curFileinfos.Count) then ButtonNext.Enabled:=false;
 end;
 
 function TFrmMain.LoadImage(var img: TImage; fi: TFileinfo; angle: Integer):Boolean;
@@ -1023,6 +1027,13 @@ begin
     result:=doLoadImage(fpath,img,0,fi,sldb,thumbsdb,importingThumbs);
 end;
 
+
+procedure TFrmMain.DateiausderDatenbankentfernen1Click(Sender: TObject);
+begin
+  TFileinfo.db_destroy(sldb,TPreview(clickedPreview).fileinfo.id);
+  curFileinfos.Remove(TPreview(clickedPreview).fileinfo);
+  updatePreviews;
+end;
 
 procedure TFrmMain.Dateiffnen1Click(Sender: TObject);
 begin

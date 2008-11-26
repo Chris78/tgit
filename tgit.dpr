@@ -14,7 +14,8 @@ uses
   UTag in 'UTag.pas',
   UTagging in 'UTagging.pas',
   UFrmEditTags in 'UFrmEditTags.pas' {frmEditTags},
-  UTagMenuItem in 'UTagMenuItem.pas';
+  UTagMenuItem in 'UTagMenuItem.pas',
+  AVCodec in 'AVCodec.pas';
 
 {$R *.res}
 

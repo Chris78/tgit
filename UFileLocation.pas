@@ -16,11 +16,14 @@ type
     alternateHTTPHost,alternateHTTPPath: String;
     location: TLocation;  // "file_location belongs_to :location"
     fileinfo : TObject; // "file_location belongs_to :fileinfo"
+
     function getFileinfo: TObject;
     function getLocation: TLocation;
     function full_path:String;
     function location_and_full_path:String;
     function accessible: Boolean;
+    function fl_destroy():Boolean;
+
     constructor create(db:TSQLiteDatabase; fields: THash);
     class function db_find(db:TSQLiteDatabase; id:integer): TFileLocation;    
     class function db_create(db: TSQLiteDatabase; fileinfo_id, location_id: Integer; path, fname: String) : TFileLocation;    
@@ -67,6 +70,16 @@ end;
 function TFileLocation.accessible():Boolean;
 begin
   result:=FileExists(self.full_path);
+end;
+
+function TFileLocation.fl_destroy():Boolean;
+begin
+  try
+    sldb.ExecSQL('DELETE FROM file_locations WHERE id='+inttostr(self.id));
+    result:=true;
+  finally
+    result:=false;
+  end;
 end;
 
 // =============================================================================

@@ -1,2 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<BorlandProject/>
+<BorlandProject>
+  <Transactions>
+    <Transaction>2008.11.26 21:13:15.875.pas,F:\projects\tgit\Unit1.pas=F:\projects\tgit\AVCodec.pas</Transaction>
+  </Transactions>
+</BorlandProject>

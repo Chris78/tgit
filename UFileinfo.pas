@@ -26,10 +26,13 @@ type
 
     function getAttr(name:String):String;
     function file_location_find_by_id(id:String):TFileLocation;
+    function getFileLocations(reload: Boolean = false):TObjectList;
+
     function getAccessibleLocation(CDROMDriveLetter,UsbStickLetter:string): String;
     function getAlternateDriveLetter():string;
     function setDriveLetter(letter,path:string):string;
 
+    function getTaggings(reload: Boolean = false):TObjectList;
     function getTags(reload: Boolean = false):TObjectList;
     function setTaglist(s:String):TObjectList;
     function addTagNames(ts:string) : TObjectList;
@@ -41,10 +44,13 @@ type
     function addTagID(tag_id:integer) : TObjectList;
     function removeTagIDs(tag_ids:string) : TObjectList;
     function removeTagID(tag_id:integer) : TObjectList;
-    class function taggable_type : String;    
+    function fi_destroy():Boolean;
+
+    class function taggable_type : String;
     class function db_find(db:TSQLiteDatabase; id:integer): TFileinfo;
     class function db_create(db: TSQLiteDatabase; sha2:string; fsize:integer): TFileinfo;
     class function db_find_or_create_by_sha2_and_filesize(db: TSQLiteDatabase; sha2:string; fsize:integer):TFileinfo;
+    class function db_destroy(db: TSQLiteDatabase; id:integer):Boolean;
 
     private
       taggings: TTaggings;
@@ -71,6 +77,22 @@ begin
     result:=TFileLocation.create(sldb,tbl.GetRow)
   else
     result:=nil;
+end;
+
+function TFileinfo.getFileLocations(reload: Boolean = false):TObjectList;
+var
+  tbl: TSQLiteTable;
+begin
+  if (self.file_locations<>nil) or reload then begin
+    if self.file_locations<>nil then self.file_locations.free;
+    tbl:=sldb.GetTable('SELECT * FROM file_locations WHERE fileinfo_id="'+inttostr(self.id)+'"');
+    file_locations:=TObjectList.create();
+    while not tbl.EOF do begin
+      file_locations.Add(TFileLocation.Create(sldb, tbl.getRow));
+      tbl.Next;
+    end;
+  end;
+  result:=self.file_locations;
 end;
 
 function TFileinfo.getAccessibleLocation(CDROMDriveLetter,UsbStickLetter:string): String;
@@ -111,6 +133,24 @@ begin
 //redo?  f:=TForm1(self.mainform);
 //       result:=f.caption;
 //  getCDROM();
+end;
+
+function TFileinfo.getTaggings(reload: Boolean = false):TObjectList;
+var
+  tbl: TSQLiteTable;
+begin
+  if (self.taggings<>nil) and not reload then
+    result:=self.taggings
+  else begin
+    if self.taggings<>nil then self.taggings.Free;
+    tbl:=sldb.GetTable('SELECT * FROM taggings WHERE taggable_type="'+self.taggable_type+'" AND taggable_id="'+inttostr(self.id)+'"');
+    taggings:=TObjectList.create();
+    while not tbl.EOF do begin
+      taggings.Add(TTagging.Create(sldb, tbl.getRow));
+      tbl.Next;
+    end;
+    result:=taggings;
+  end;
 end;
 
 function TFileinfo.getTags(reload: Boolean = false):TObjectList;
@@ -204,6 +244,29 @@ begin
   //result:=getTags(true);
 end;
 
+function TFileinfo.fi_destroy():Boolean;
+var
+  i: Integer;
+begin
+  // TODO: folgenden Schritte immer als Transaktion durchführen!!
+  try
+    // Taggings löschen
+    for i:=0 to self.getTaggings().Count-1 do begin
+      TTagging(self.taggings.Items[i]).tgg_destroy();
+    end;
+    // FileLocations löschen
+    for i:=0 to self.getFileLocations().Count-1 do begin
+      TFileLocation(self.file_locations.Items[i]).fl_destroy();
+    end;
+    // Fileinfo selbst löschen:
+    sldb.ExecSQL('DELETE FROM fileinfos WHERE id='+inttostr(self.id));
+    result:=true;
+  except
+    result:=false;
+  end;
+end;
+
+
 // =============================================================================
 //                             Klassen-Methoden
 // =============================================================================
@@ -285,11 +348,20 @@ begin
   end;
 end;
 
+class function TFileinfo.db_destroy(db: TSQLiteDatabase; id:integer):Boolean;
+var
+  fi: TFileinfo;
+begin
+  fi:=TFileinfo.db_find(db,id);
+  result:=fi.fi_destroy;
+  fi.Free;
+end;
+
 destructor TFileinfo.destroy();
 begin
-  file_locations.free;
-  tags.free;
-  taggings.free;
+  if file_locations<>nil then file_locations.free;
+  if tags<>nil then tags.free;
+  if taggings<>nil then taggings.free;
 end;
 
 end.
