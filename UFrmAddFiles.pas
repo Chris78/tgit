@@ -30,7 +30,7 @@ type
   private
     { Private declarations }
     mainForm : TObject;
-    sldb: TSQLiteDatabase;
+    sldb,thumbsdb: TSQLiteDatabase;
   public
     { Public declarations }
   constructor create(Sender: TComponent);
@@ -55,6 +55,7 @@ begin
   inherited create(Sender);
   mainForm:=TFrmMain(Sender);
   sldb:=TFrmMain(mainForm).sldb;
+  thumbsdb:=TFrmMain(mainForm).thumbsdb;
   edtInitialTags.Text:=TFrmMain(mainForm).selectedTags.CommaText;
 end;
 
@@ -95,6 +96,7 @@ begin
     path:=ShellTreeView1.SelectedFolder.PathName;
     selectedLocation:=getSelectedLocation();
     AddPathToTgit(selectedlocation,path,chkSubfolders.checked,edtInitialTags.text);
+    close;
   end
   else
     alert('Bitte wählen Sie eine Location aus!');  
@@ -169,18 +171,17 @@ begin
     sha2:=TFrmMain(mainform).GetSha2(path_file);
     fsize:=TFrmMain(mainform).GetFilesize(path_file);
     fi:=TFileinfo.db_find_or_create_by_sha2_and_filesize(sldb,sha2,fsize);
-  // Jetzt die Tags hinzufügen
+    // Jetzt die Tags hinzufügen
     fi.addTagNames(initialTags);
-// und die File_Location anlegen, damit man auch weiß, wo die Datei lag:
-//    filename=Iconv.iconv('utf-8','iso-8859-1',filename).first
-//    path=Iconv.iconv('utf-8','iso-8859-1',path).first
-//    FileLocation.find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(inf.id,location.id,path,filename) if inf
+    // und die File_Location anlegen, damit man auch weiß, wo die Datei lag:
     fl:=TFileLocation.db_find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(sldb,fi.id, location.id, path, fname);
-//  end
+    // Thumbnail erzeugen:
+    doLoadImage(path+'\'+fname,imgPreview,0,fi,sldb,thumbsdb,true);
   finally
     fi.free;
     fl.free;
-    close;
+    application.ProcessMessages;
+//    close;
   end;
 end;
 

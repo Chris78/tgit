@@ -1,8 +1,8 @@
 object FrmMain: TFrmMain
-  Left = 240
-  Top = 66
+  Left = 480
+  Top = 0
   Caption = 'Tgit GUI'
-  ClientHeight = 863
+  ClientHeight = 939
   ClientWidth = 1139
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -48,12 +48,12 @@ object FrmMain: TFrmMain
   OnResize = FormResize
   DesignSize = (
     1139
-    863)
+    939)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
     Left = 8
-    Top = 801
+    Top = 877
     Width = 32
     Height = 13
     Anchors = [akLeft, akBottom]
@@ -66,17 +66,6 @@ object FrmMain: TFrmMain
     Width = 51
     Height = 13
     Caption = 'Limit Tags:'
-  end
-  object Image1: TImage
-    Left = 357
-    Top = 673
-    Width = 228
-    Height = 145
-    Anchors = [akLeft, akBottom]
-    Center = True
-    Proportional = True
-    Stretch = True
-    ExplicitTop = 654
   end
   object lblFilterTags: TLabel
     Left = 608
@@ -91,6 +80,18 @@ object FrmMain: TFrmMain
     Width = 6
     Height = 13
     Caption = '0'
+  end
+  object Image1: TImage
+    Left = 332
+    Top = 748
+    Width = 228
+    Height = 145
+    Anchors = [akLeft, akBottom]
+    Center = True
+    Proportional = True
+    Stretch = True
+    Transparent = True
+    ExplicitTop = 691
   end
   object TagCloud: TGroupBox
     Left = 588
@@ -126,13 +127,12 @@ object FrmMain: TFrmMain
   end
   object edtQuery: TEdit
     Left = 8
-    Top = 822
+    Top = 898
     Width = 569
     Height = 21
     Anchors = [akLeft, akBottom]
     TabOrder = 3
     Text = 'edtQuery'
-    ExplicitTop = 784
   end
   object Button2: TButton
     Left = 64
@@ -153,10 +153,11 @@ object FrmMain: TFrmMain
     OnClick = Button3Click
   end
   object TabControl1: TTabControl
-    Left = 0
-    Top = 52
+    Left = 8
+    Top = 53
     Width = 569
-    Height = 618
+    Height = 693
+    Margins.Bottom = 200
     Anchors = [akLeft, akTop, akBottom]
     Constraints.MinHeight = 300
     Constraints.MinWidth = 400
@@ -168,44 +169,50 @@ object FrmMain: TFrmMain
       'Previews')
     TabIndex = 1
     OnChange = TabControl1Change
-    ExplicitHeight = 580
     object PanelTab1: TPanel
       Left = 4
       Top = 4
       Width = 542
-      Height = 610
+      Height = 685
       Align = alClient
       TabOrder = 0
       Visible = False
-      ExplicitHeight = 572
       object StringGrid2: TStringGrid
         Left = 1
         Top = 1
         Width = 540
-        Height = 608
+        Height = 683
         Align = alClient
         DefaultColWidth = 180
         DefaultRowHeight = 16
         FixedCols = 0
         TabOrder = 0
         OnSelectCell = StringGrid2SelectCell
-        ExplicitHeight = 570
       end
     end
     object PanelTab2: TPanel
       Left = 4
       Top = 4
       Width = 542
-      Height = 610
+      Height = 685
       Align = alClient
       TabOrder = 1
-      ExplicitHeight = 572
       DesignSize = (
         542
-        610)
+        685)
+      object lblPageXOfY: TLabel
+        Left = 232
+        Top = 659
+        Width = 82
+        Height = 13
+        Anchors = [akRight, akBottom]
+        AutoSize = False
+        Caption = 'Seite 0 / 0'
+        ExplicitTop = 603
+      end
       object ButtonBack: TButton
         Left = 320
-        Top = 577
+        Top = 652
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
@@ -213,37 +220,33 @@ object FrmMain: TFrmMain
         Enabled = False
         TabOrder = 0
         OnClick = ButtonBackClick
-        ExplicitTop = 539
       end
       object ButtonNext: TButton
         Left = 424
-        Top = 578
+        Top = 652
         Width = 89
         Height = 25
         Anchors = [akRight, akBottom]
         Caption = 'Seite vor'
         TabOrder = 1
         OnClick = ButtonNextClick
-        ExplicitTop = 540
       end
       object PanelPreviews: TPanel
         Left = 1
         Top = 1
         Width = 540
-        Height = 571
+        Height = 647
         Anchors = [akLeft, akTop, akRight, akBottom]
         TabOrder = 2
-        ExplicitHeight = 533
       end
       object ChkShowAccessablesOnly: TCheckBox
         Left = 8
-        Top = 582
+        Top = 657
         Width = 177
         Height = 17
         Anchors = [akLeft, akBottom]
         Caption = 'nur zugreifbare Dateien anzeigen'
         TabOrder = 3
-        ExplicitTop = 544
       end
     end
   end
@@ -257,24 +260,22 @@ object FrmMain: TFrmMain
   end
   object btnCreateAllThumbs: TButton
     Left = 8
-    Top = 745
+    Top = 821
     Width = 105
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'create all Thumbs'
     TabOrder = 8
     OnClick = btnCreateAllThumbsClick
-    ExplicitTop = 707
   end
   object ProgressThumbCreate: TProgressBar
     Left = 8
-    Top = 777
+    Top = 853
     Width = 105
     Height = 16
     Anchors = [akLeft, akBottom]
     Step = 1
     TabOrder = 9
-    ExplicitTop = 739
   end
   object edtTagFilter: TEdit
     Left = 671
@@ -295,15 +296,14 @@ object FrmMain: TFrmMain
     OnClick = Button6Click
   end
   object Button7: TButton
-    Left = 8
-    Top = 673
+    Left = 119
+    Top = 821
     Width = 89
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'Fileinfo.CDROM'
     TabOrder = 12
     OnClick = Button7Click
-    ExplicitTop = 635
   end
   object DCP_sha256: TDCP_sha256
     Id = 28
@@ -408,6 +408,14 @@ object FrmMain: TFrmMain
           RadioItem = True
           OnClick = N101Click
         end
+      end
+      object zurErstenSeite: TMenuItem
+        Caption = 'zur ersten Seite'
+        OnClick = zurErstenSeiteClick
+      end
+      object zurletztenSeite: TMenuItem
+        Caption = 'zur letzten Seite'
+        OnClick = zurletztenSeiteClick
       end
     end
     object Optionen1: TMenuItem

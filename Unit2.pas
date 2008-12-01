@@ -13,8 +13,8 @@ uses
   UHelper,
   //GraphicEx,
   jpeg, UJPGStreamFix, 
-  ShellAPI, UPreview, MPlayer, ShellCtrls, IdGlobal,
-  AVCodec;
+  //,AVCodec
+  ShellAPI, UPreview, MPlayer, ShellCtrls, IdGlobal;
 
 const
   rowPadding=2;
@@ -69,7 +69,6 @@ type
     OpenDialog1: TOpenDialog;
     Button2: TButton;
     Button3: TButton;
-    Image1: TImage;
     Ansicht1: TMenuItem;
     VorschaubilderproSpalte1: TMenuItem;
     N11: TMenuItem;
@@ -111,6 +110,10 @@ type
     LaufwerksbuchstabefrUSBGerte1: TMenuItem;
     Label4: TLabel;
     Schlagwortentfernen1: TMenuItem;
+    lblPageXOfY: TLabel;
+    zurErstenSeite: TMenuItem;
+    zurletztenSeite: TMenuItem;
+    Image1: TImage;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormResize(Sender: TObject);
@@ -157,8 +160,10 @@ type
     procedure hinzufgen2Click(Sender: TObject);
     procedure Schlagwortendern1Click(Sender: TObject);
     procedure PopupPreviewPopup(Sender: TObject);
-    procedure doRemoveTag(Sender:TObject);
+    procedure doRemoveTagging(Sender:TObject);
     procedure DateiausderDatenbankentfernen1Click(Sender: TObject);
+    procedure zurErstenSeiteClick(Sender: TObject);
+    procedure zurletztenSeiteClick(Sender: TObject);
   private
     { Private declarations }
     importingThumbs,busyReloading: Boolean;
@@ -168,11 +173,12 @@ type
     lastLabel: TLabel;
     maxTagCount: Integer;
     curFileinfos: TObjectList;
-    clickedPreview: TImage;
     clickedTagName: String;
     clickedTagWasActive: Boolean;
     picsPerCol: Integer;
     pageNo: Integer;
+    frmAddFiles: TFrmAddFiles;
+    frmEditTags: TfrmEditTags;
     procedure openDB(promptUser:Boolean);
     procedure openThumbDB;
     procedure loadSettingsFromIniFile();
@@ -201,10 +207,12 @@ type
     procedure arrangePreviews();
     procedure previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
 
+    procedure ChangePicsPerCol(n: Integer; mi: TMenuItem);
+    function pageCount():Integer;
+
     function  StringToArrayOfBytes(s:String): TByteArray;
     function  getCommaListOf(attr:String;t:TObjectList;quot:String): String;
     function  quoteConcatStrList(s:TStringlist): string;
-    function LoadImage(var img: TImage; fi : TFileinfo; angle:Integer):Boolean;
 //    function doLoadImage(fpath: String; img: TImage; angle: Integer = 0; fi:TFileinfo = nil): Boolean;
 //    procedure saveThumb(fi:TFileinfo; img:TImage);
   public
@@ -215,10 +223,12 @@ type
     getCDROM : TFunctionPtr;
     selectedCDROMDrive: String;
     selectedUSBDrive: String;
+    clickedPreview: TImage;
     procedure updateDocuments(limit: Integer = -1; offset:Integer = -1);
     function GetSha2(filename:String): String;
     function GetFilesize(path_file:string): Integer;
     function Sha2(s:String): String;
+    function LoadImage(var img: TImage; fi : TFileinfo; angle:Integer):Boolean;
   end;
 
 var
@@ -234,7 +244,7 @@ uses FreeImage;
 
 procedure TFrmMain.FormCreate(Sender: TObject);
 begin
-  av_register_all;
+  //av_register_all; <-- ffpmeg libs
   importingThumbs:=false;
   busyReloading:=false;
   // Settings setzen (Defaults)
@@ -246,6 +256,7 @@ begin
   pageNo:=1;
   selectedTags:=TStringlist.create;
   selectedTags.Sorted:=true;
+  selectedTags.QuoteChar:=Char(' ');
   curFileinfos:=TObjectList.create;
   openDB(false); // try to open DB, but don't prompt user to choose a db-file
   openThumbDB;
@@ -254,17 +265,14 @@ begin
 end;
 
 procedure TFrmMain.openDB(promptUser:Boolean);
-var
-  limit,i: Integer;
 begin
   FrmMain.Caption:='Tgit GUI';
-  if not FileExists(slDBPath) and promptUser then
-    begin
-      if OpenDialog1.execute then
-        slDBPath := OpenDialog1.Filename
-      else
-        alert('Bitte wählen Sie im Menü "Optionen" eine Datenbank aus!');
-    end;
+  if not FileExists(slDBPath) and promptUser then begin
+    if OpenDialog1.execute then
+      slDBPath := OpenDialog1.Filename
+    else
+      alert('Bitte wählen Sie im Menü "Optionen" eine Datenbank aus!');
+  end;
   if FileExists(slDBPath) then begin
     sldb := TSQLiteDatabase.Create(slDBPath);
     FrmMain.Caption:='Tgit GUI - '+slDBPath;
@@ -275,6 +283,7 @@ begin
     locations:=TLocations(TLocation.all(sldb));
   end;
 end;
+
 procedure TFrmMain.openThumbDB;
 begin
   try
@@ -287,20 +296,17 @@ end;
 // Holt die Dokumente zu den angegebenen tags.
 function TFrmMain.GetItemsFor(tags:TStringList; match_all: Boolean):TObjectList;
 var
-  idx: Integer;
-  query,flid: String;
+  query: String;
   tbl: TSQLiteTable;
   h,r: THash;
-  f,fi: TFileinfo;
-  fl: TFileLocation;
+  f: TFileinfo;
 begin
-  //result:=TObjectList.create;
   curFileinfos.Clear;
   query:='SELECT temp.*,file_locations.id AS FILE_LOCATION_ID FROM '+
          '  (SELECT fileinfos.* FROM tags '+
          '   LEFT JOIN taggings ON taggings.tag_id=tags.id '+
          '   LEFT JOIN fileinfos on fileinfos.id=taggings.taggable_id AND taggings.taggable_type="Fileinfo" '+
-         '   WHERE tags.name in ("'+UTF8Encode(AssembleItWell(tags,'","'))+'") '+
+         '   WHERE tags.name in ("'+AssembleItWell(tags,'","')+'") '+
          '   GROUP BY fileinfos.id ';
   if match_all then begin
     query := query+' HAVING count(distinct tags.id)='+inttostr(tags.count);
@@ -309,7 +315,7 @@ begin
                ' LEFT JOIN file_locations ON temp.id=file_locations.fileinfo_id ';
 
   edtQuery.text:=query;
-  tbl := slDb.GetTable(query);
+  tbl := slDb.GetTable(AnsiString(UTF8Encode(query)));
   h:=THash.create;
 
   while not tbl.eof do begin
@@ -319,20 +325,25 @@ begin
     if h.GetString(inttostr(f.id))<>'1' then begin
         h.SetString(inttostr(f.id),'1');
         curFileinfos.add(f);
+        if curFileinfos.Count=pageNo*picsPerCol*PicsPerCol then
+          updatePreviews();
     end;
     tbl.Next;
+    application.ProcessMessages;
   end;
   h.free;
   result:=curFileinfos;
+  ButtonBack.Enabled:=(pageNo>1);
+  ButtonNext.Enabled:=(pageNo*PicsPerCol*PicsPerCol<curFileinfos.Count);
 end;
 
 procedure TFrmMain.showFileinfos(fis: TObjectList);
-var
-  i,j,k:Integer;
-  fi:TFileinfo;
-  fl: TFileLocation;
+//var
+//  i,j,k:Integer;
+//  fi:TFileinfo;
+//  fl: TFileLocation;
 begin
-  for i:=0 to StringGrid2.Rowcount-1 do begin
+{  for i:=0 to StringGrid2.Rowcount-1 do begin
     StringGrid2.Rows[i].clear;
   end;
   i:=0;
@@ -356,6 +367,7 @@ begin
       inc(i);
     end;
   end;
+}
   updatePreviews;
 end;
 
@@ -364,13 +376,10 @@ end;
 // andere Anzahl von Bildern pro Spalte eingestellt wird.
 procedure TFrmMain.updatePreviews;
 var
-  i,perPage,c,k: Integer;
+  i,perPage,c: Integer;
   fi: TFileinfo;
-  fl:TFileLocation;
-  accessiblePath: string;
 begin
   clearPreviews;
-  accessiblePath:='';
   perPage:=picsPerCol*picsPerCol;
   i:=(pageNo-1)*perPage;  // Startindex
   c:=0;
@@ -383,16 +392,24 @@ begin
     end;
     inc(i);
   end;
+  lblPageXOfY.caption:='Seite '+inttostr(pageNo)+' / '+inttostr(pageCount());
+  ButtonBack.Enabled:=(pageNo>1);
+  ButtonNext.Enabled:=(pageNo*perPage<curFileinfos.Count);
+end;
+
+function TFrmMain.pageCount():Integer;
+var
+  perPage: Integer;
+begin
+  perPage:=picsPerCol*picsPerCol;
+  result:=curFileinfos.Count div perPage;
+  if (curFileinfos.Count mod perPage>0) then inc(result);
 end;
 
 function TFrmMain.renderPreview(fi:TFileinfo; index:Integer): Boolean;
 var
   img: TImage;
   accessiblePath: String;
-  success: Boolean;
-  tbl: TSQLiteTable;
-  data: TMemoryStream;
-  jp: TJpegImage;
 begin
   accessiblePath:=fi.getAccessibleLocation(selectedCDROMDrive,selectedUSBDrive);
   if (accessiblePath='') and ChkShowAccessablesOnly.Checked then
@@ -402,42 +419,19 @@ begin
     img:=TPreview.create(FrmMain,PanelPreviews,fi,index);
     with img do begin
       hide;
-      stretch:=true;
+      stretch:=false;
       Proportional:=true;
       center:=true;
       //IncrementalDisplay:=true;  // ???
       width:=(PanelPreviews.Width div picsPerCol)-colPadding;
       height:=(PanelPreviews.height div picsPerCol)-rowPadding;
       Parent:=PanelPreviews;
-      Hint:=accessiblePath;
+      Hint:=TPreview(img).fileinfo.getFileLocationNames;
       ShowHint:=true;
       img.onDblClick:=TPreview(img).dblClick;
+      img.OnClick:=TPreview(img).click;
       OnContextPopup:=previewClick;
       PopupMenu:=PopupPreview;
-    end;
-
-    // Versuchen den Thumbnail aus der DB zu laden:
-    tbl:=thumbsdb.GetTable('SELECT data FROM thumbs WHERE fileinfo_id="'+inttostr(fi.id)+'" LIMIT 1');
-    if tbl.RowCount>0 then begin
-      if not importingThumbs then begin
-        data:=TMemoryStream.create;
-        data:=tbl.FieldAsBlob(tbl.FieldIndex['data']);
-        data.Seek(0,0);
-        jp:=TJPEGImage.create;
-        jp.LoadFromStream(data);
-        img.picture.assign(jp);
-//alert('nach assign: '+TPreview(img).fileinfo.sha2);
-        jp.free;
-        data.free;
-      end;
-    end
-    else begin
-      success := LoadImage(img,fi,0);
-//alert('nach LoadImage: '+TPreview(img).fileinfo.sha2);
-      if not success then begin // Bild ist nicht-erreichbar oder nicht darstellbar.
-        img.Picture.LoadFromFile(ExtractFilepath(application.ExeName)+'public\images\no_disk.jpg');
-//alert('nach .Picture.LoadFromFile: '+TPreview(img).fileinfo.sha2);
-      end;
     end;
   end;
 end;
@@ -510,12 +504,12 @@ var
   tmp: TSQLiteTable;
 begin
   if limit=0 then begin
-    tmp := sldb.GetTable('SELECT COUNT(*) AS anz FROM tags WHERE name LIKE "%'+UTF8Encode(filter)+'%"');
+    tmp := sldb.GetTable(AnsiString(UTF8ToString('SELECT COUNT(*) AS anz FROM tags WHERE name LIKE "%'+filter+'%"')));
     limit := floor(tmp.FieldAsInteger(tmp.FieldIndex['anz'])*(TrackBar1.Position/Trackbar1.max));
   end;
   joinCondition:='';
   having:='';
-  filterCondition:=' WHERE tags.name LIKE "%'+UTF8Encode(filter)+'%" ';
+  filterCondition:=' WHERE tags.name LIKE "%'+filter+'%" ';
   if (ItemsForSelectedTags<>nil) and (ItemsForSelectedTags.count>0) then begin
     taggable_ids:=getCommaListOf('id',itemsForSelectedTags,'');
 //    alert('taggable_ids = '+taggable_ids);
@@ -540,7 +534,7 @@ begin
     '    LIMIT '+inttostr(limit)+
     '  ) AS temp '+
     'ORDER BY name COLLATE NOCASE';
-  result := slDb.GetTable(query);
+  result := slDb.GetTable(AnsiString(UTF8Encode(query)));
 end;
 
 function TFrmMain.getCommaListOf(attr:String;t:TObjectList;quot:String): String;
@@ -568,7 +562,7 @@ begin
   i:=0;
   if tags.Count > 0 then begin
     while not tags.EOF do begin
-      tag_item:=UTF8Decode(tags.FieldAsString(tags.FieldIndex['Name']));
+      tag_item:=UTF8ToString(AnsiString(tags.FieldAsString(tags.FieldIndex['Name'])));
       tag_count:=tags.FieldAsString(tags.FieldIndex['anz']);
       maxTagCount:=max(maxTagCount,StrToInt(tag_count));
       renderTag(tag_item,tag_count,i);
@@ -658,8 +652,6 @@ end;
 
 procedure TFrmMain.updateDocuments(limit: Integer = -1; offset:Integer = -1);
 begin
-  if limit=-1 then limit:=picsPerCol*picsPerCol;
-  if offset=-1 then offset:=pageNo-1;
   ItemsForSelectedTags:=GetItemsFor(selectedTags,chkMatchAll.checked);
   showFileinfos(ItemsForSelectedTags);
 end;
@@ -745,23 +737,21 @@ var
   s: string;
   buffer: array[0..16383] of byte;
 begin
+  strmInput := TFileStream.Create(filename,fmOpenRead);
   try
     DCP_sha256.Init;
-    strmInput := TFileStream.Create(filename,fmOpenRead);
     repeat
       read := strmInput.Read(buffer,Sizeof(buffer));
       DCP_sha256.Update(buffer,read);
     until read <> Sizeof(buffer);
-    strmInput.Free;
     SetLength(HashDigest,DCP_sha256.HashSize div 8);
     DCP_sha256.Final(HashDigest[0]);  // get the output
     s := '';
     for j := 0 to Length(HashDigest) - 1 do  // convert it into a hex string
       s := s + IntToHex(HashDigest[j],2);
     result:=lowercase(s);  // <--- SQLite3 ist case-sensitive!
-  except
+  finally
     strmInput.Free;
-    MessageDlg('An error occurred while reading the file',mtError,[mbOK],0);
   end;
 end;
 
@@ -775,26 +765,21 @@ begin
     Result[j] := ord(s[j + 1]) - 48;
 end;
 
-//procedure TFrmMain.alert(s:String);
-//begin
-//  messageDlg(s,mtInformation,[mbOK],0);
-//end;
-
 procedure TFrmMain.FormResize(Sender: TObject);
 begin
   TagCloud.width:=FrmMain.Width div 2 -25;
   TabControl1.width:=FrmMain.Width div 2 -25;
+  TabControl1.Height:=FrmMain.Height - 100;
   TagCloud.left:=TabControl1.width+TabControl1.left+25;
   arrangeTagCloud;
-  //updatePreviews;
-  arrangePreviews;
+  updatePreviews;
 end;
 
 procedure TFrmMain.TrackBar1Change(Sender: TObject);
 var newLimit: Integer;
 begin
   if not busyReloading then begin
-    sltb:=sldb.GetTable('SELECT COUNT(*) AS anz FROM tags');
+    sltb:=sldb.GetTable(AnsiString(UTF8ToString('SELECT COUNT(*) AS anz FROM tags')));
     newLimit:=floor(sltb.FieldAsInteger(sltb.FieldIndex['anz'])*Trackbar1.Position/TrackBar1.max);
     reloadTagCloud(newLimit);
   end;
@@ -851,21 +836,6 @@ begin
     openThumbDB;
 end;
 
-
-procedure TFrmMain.FormDestroy(Sender: TObject);
-var
-  f: Textfile;
-  fname: string;
-begin
-  fname:=extractfilepath(application.exename)+'\tgit.ini';
-  assignfile(f,fname);
-  rewrite(f);
-  writeln(f,sldbpath);
-  writeln(f,thumbdbpath);
-  writeln(f,inttostr(picsPerCol));
-  closeFile(f);
-end;
-
 procedure TFrmMain.Timer1Timer(Sender: TObject);
 begin
   Timer1.Enabled:=false;
@@ -917,74 +887,52 @@ begin
   end;
 end;
 
+procedure TFrmMain.ChangePicsPerCol(n: Integer; mi: TMenuItem);
+begin
+  picsPerCol:=n;
+  mi.Checked:=true;
+  updatePreviews;
+end;
+
 procedure TFrmMain.N11Click(Sender: TObject);
 begin
-  picsPerCol:=1;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(1,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N21Click(Sender: TObject);
 begin
-  picsPerCol:=2;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(2,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N31Click(Sender: TObject);
 begin
-  picsPerCol:=3;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(3,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N41Click(Sender: TObject);
 begin
-  picsPerCol:=4;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(4,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N51Click(Sender: TObject);
 begin
-  picsPerCol:=5;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(5,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N61Click(Sender: TObject);
 begin
-  picsPerCol:=6;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(6,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N71Click(Sender: TObject);
 begin
-  picsPerCol:=7;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(7,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N81Click(Sender: TObject);
 begin
-  picsPerCol:=8;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(8,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N91Click(Sender: TObject);
 begin
-  picsPerCol:=9;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(9,TMenuItem(Sender));
 end;
-
 procedure TFrmMain.N101Click(Sender: TObject);
 begin
-  picsPerCol:=10;
-  TMenuItem(Sender).Checked:=true;
-  updatePreviews;
+  ChangePicsPerCol(10,TMenuItem(Sender));
 end;
 
 procedure TFrmMain.TabControl1Change(Sender: TObject);
@@ -1003,30 +951,36 @@ procedure TFrmMain.ButtonBackClick(Sender: TObject);
 begin
   dec(pageNo);
   updatePreviews;
-  if(pageNo<=1) then ButtonBack.Enabled:=false;
-  if(pageNo*picsPerCol*picsPerCol<curFileinfos.Count) then ButtonNext.Enabled:=true;
 end;
 
 procedure TFrmMain.ButtonNextClick(Sender: TObject);
 begin
   inc(pageNo);
   updatePreviews;
-  if(pageNo>1) then ButtonBack.Enabled:=true;
-  if(pageNo*picsPerCol*picsPerCol>=curFileinfos.Count) then ButtonNext.Enabled:=false;
+end;
+
+procedure TFrmMain.zurErstenSeiteClick(Sender: TObject);
+begin
+  pageNo:=1;
+  updatePreviews;
+end;
+
+procedure TFrmMain.zurletztenSeiteClick(Sender: TObject);
+begin
+  pageNo:=pageCount();
+  updatePreviews;
 end;
 
 function TFrmMain.LoadImage(var img: TImage; fi: TFileinfo; angle: Integer):Boolean;
 var
   fpath: string;
 begin
-  result:=true;
   fpath:=fi.getAccessibleLocation(selectedCDROMDrive,selectedUSBDrive);
   if fpath='' then
     result:=false
   else
     result:=doLoadImage(fpath,img,0,fi,sldb,thumbsdb,importingThumbs);
 end;
-
 
 procedure TFrmMain.DateiausderDatenbankentfernen1Click(Sender: TObject);
 begin
@@ -1068,18 +1022,16 @@ end;
 
 procedure TFrmMain.btnCreateAllThumbsClick(Sender: TObject);
 var
-  query,flid: String;
+  query: String;
   h,row: THash;
   tbl: TSQLiteTable;
   f:TFileinfo;
-  idx: Integer;
-  fl: TFileLocation;
 begin
   importingThumbs:=true;
   query:='SELECT fileinfos.*,file_locations.id AS FILE_LOCATION_ID'+
          ' FROM fileinfos'+
          ' LEFT JOIN file_locations ON fileinfos.id=file_locations.fileinfo_id';
-  tbl := slDb.GetTable(query);
+  tbl := slDb.GetTable(AnsiString(UTF8ToString(query)));
   h:=THash.create;
   ProgressThumbCreate.min:=0;
   ProgressThumbCreate.max:=tbl.RowCount;
@@ -1153,11 +1105,10 @@ end;
 
 function TFrmMain.getDriveLetters(): TCharArray;
 var
-  i,j,bits : integer;
+  i,bits : integer;
 const
   abc='abcdefghijklmnopqrstuvwxyz';
 begin
-  j:=0;
   bits := getLogicalDrives();
   for i:=1 to 26 do begin
     if inttobin(bits)[32-i+1]='1' then begin
@@ -1234,7 +1185,6 @@ procedure TFrmMain.makeDriveLetterMenus;
     arr: TCharArray;
     i,k: integer;
     t: TMenuItem;
-    s:string;
     typs: Array[0..1] of Cardinal;
 begin
   typs[0]:=DRIVE_CDROM;
@@ -1308,11 +1258,10 @@ end;
 
 procedure TFrmMain.hinzufgen2Click(Sender: TObject);
 begin
-  with TFrmAddFiles.Create(self) do
-  try
+  if frmAddFiles=nil then frmAddFiles:=TFrmAddFiles.Create(self);
+  with frmAddFiles do begin
+    frmAddFiles.edtInitialTags.text:=selectedTags.DelimitedText;
     ShowModal;
-  finally
-    Free;
   end;
   updateDocuments;
   reloadTagCloud;
@@ -1320,11 +1269,9 @@ end;
 
 procedure TFrmMain.Schlagwortendern1Click(Sender: TObject);
 begin
-  with TFrmEditTags.Create(self) do
-  try
+  if frmEditTags=nil then frmEditTags:=TFrmEditTags.Create(self);
+  with frmEditTags do begin
     ShowModal;
-  finally
-    Free;
   end;
 end;
 
@@ -1335,28 +1282,45 @@ procedure TFrmMain.PopupPreviewPopup(Sender: TObject);
 var
   i: Integer;
   fi: TFileinfo;
-  tags: TObjectList;
+  taggings: TObjectList;
   subm,mi: TMenuItem;
 begin
   fi:=TPreview(clickedPreview).fileinfo;
-  tags:=fi.getTags;
+  taggings:=fi.getTaggings;
   subm:=TPopupMenu(Sender).items[1];
   if subm.count>0 then subm.Clear;
-  for i:=0 to tags.Count-1 do begin
-    mi:=TTagMenuItem.create(subm,tags[i]);
+  for i:=0 to taggings.Count-1 do begin
+    mi:=TTagMenuItem.create(subm,taggings[i]);
     with mi do begin
       GroupIndex:=1;
-      OnClick:=doRemoveTag;
+      OnClick:=doRemoveTagging;
     end;
     subm.add(mi);
   end;
 end;
 
-procedure TFrmMain.doRemoveTag(Sender:TObject);
+procedure TFrmMain.doRemoveTagging(Sender:TObject);
 begin
-  TPreview(clickedPreview).fileinfo.removeTagID(TTagMenuItem(Sender).tag.id);
+  TTagMenuItem(Sender).tagging.tgg_destroy;
   updateDocuments;
 end;
+
+procedure TFrmMain.FormDestroy(Sender: TObject);
+var
+  f: Textfile;
+  fname: string;
+begin
+  fname:=extractfilepath(application.exename)+'\tgit.ini';
+  assignfile(f,fname);
+  rewrite(f);
+  writeln(f,sldbpath);
+  writeln(f,thumbdbpath);
+  writeln(f,inttostr(picsPerCol));
+  closeFile(f);
+  if frmAddFiles<>nil then frmAddFiles.Free;
+  if frmEditTags<>nil then frmEditTags.Free;
+end;
+
 
 end.
 

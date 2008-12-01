@@ -22,6 +22,5 @@ uses
 begin
   Application.Initialize;
   Application.CreateForm(TFrmMain, FrmMain);
-  Application.CreateForm(TfrmEditTags, frmEditTags);
   Application.Run;
 end.

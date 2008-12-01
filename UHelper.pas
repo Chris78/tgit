@@ -23,6 +23,7 @@ begin
   messageDlg(s,mtInformation,[mbOK],0);
 end;
 
+
 function doLoadImage(fpath: String; img: TImage; angle: Integer = 0; fi:TObject = nil; db: TSQLiteDatabase = nil; thumbsdb: TSQLiteDatabase = nil; importingThumbs: Boolean = false): Boolean;
 var
   dib,dib2,tmp : PFIBITMAP;
@@ -57,10 +58,10 @@ begin
 
     dib := FreeImage_LoadU(t, PWideChar(fpath), 0);
     tmp:=dib;
-    if importingThumbs then
-      dib2 := FreeImage_MakeThumbnail(dib,200)
-    else
-      dib2 := FreeImage_MakeThumbnail(dib,min(img.width,img.height));
+    //if importingThumbs then
+      dib2 := FreeImage_MakeThumbnail(dib,200);
+    //else
+    //  dib2 := FreeImage_MakeThumbnail(dib,min(img.width,img.height));
 
     dib:=dib2;
     FreeImage_unload(tmp);
@@ -107,16 +108,19 @@ var
   data: TMemoryStream;
   tbl: TSQLiteTable;
 begin
-  tbl:=thumbsdb.GetTable('SELECT data FROM thumbs WHERE fileinfo_id="'+inttostr(TFileinfo(fi).id)+'" LIMIT 1');
+  tbl:=thumbsdb.GetTable(AnsiString(UTF8Encode('SELECT data FROM thumbs WHERE fileinfo_id='+inttostr(TFileinfo(fi).id)+' LIMIT 1')));
   if (tbl.RowCount=0) then begin
     jp:=TJPEGImage.create;
     jp.Assign(img.Picture.Bitmap);
     jp.CompressionQuality:=50;
     jp.compress;
     data:=TMemoryStream.create;
-    jp.SaveToStream(data);
-    thumbsdb.UpdateBlob('INSERT INTO thumbs (fileinfo_id,data) VALUES ("'+inttostr(TFileinfo(fi).id)+'", ?)',data);
-    data.Free;
+    try
+      jp.SaveToStream(data);
+      thumbsdb.UpdateBlob(AnsiString(UTF8Encode('INSERT INTO thumbs (fileinfo_id,data) VALUES ('+inttostr(TFileinfo(fi).id)+', ?)')),data);
+    finally
+      data.Free;
+    end;
   end;
 end;
 

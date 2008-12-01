@@ -36,10 +36,10 @@ begin
   else begin
     sldb:=db;
     id:=strtoint(sid);
-    loc_type:=UTF8Decode(fields.GetString('TYPE'));
-    name:=UTF8Decode(fields.GetString('NAME'));
-    description:=UTF8Decode(fields.GetString('DESCRIPTION'));
-    located:=UTF8Decode(fields.GetString('LOCATED'));
+    loc_type:=UTF8ToString(AnsiString(fields.GetString('TYPE')));
+    name:=UTF8ToString(AnsiString(fields.GetString('NAME')));
+    description:=UTF8ToString(AnsiString(fields.GetString('DESCRIPTION')));
+    located:=UTF8ToString(AnsiString(fields.GetString('LOCATED')));
     lid:=fields.GetString('LOCATION_ID');
     if lid<>'' then location_id:=strtoint(lid);
   end;
@@ -50,12 +50,13 @@ class function TLocation.db_find(db:TSQLiteDatabase; id: Integer):TLocation;
 var
   tbl: TSQLiteTable;
 begin
-  tbl:=db.GetTable('SELECT * FROM locations WHERE id="'+inttostr(id)+'"');
+  tbl:=db.GetTable(AnsiString(UTF8Encode('SELECT * FROM locations WHERE id='+inttostr(id))));
   if tbl.Count>0 then begin
     result:=TLocation.create(db,tbl.getRow);
   end
   else begin
     alert('Location '+inttostr(id)+' nicht gefunden!');
+    result:=nil;
   end;
 end;
 
@@ -65,7 +66,7 @@ var
   l: TLocation;
   lid: string;
 begin
-  tbl:=db.GetTable('SELECT * FROM locations ORDER BY name ASC');
+  tbl:=db.GetTable(AnsiString(UTF8Encode('SELECT * FROM locations ORDER BY name ASC')));
   while(not tbl.EOF) do begin
     lid:=tbl.getRow().getString('ID');
     l:=TLocation.db_find(db,strtoint(lid));

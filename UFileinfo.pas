@@ -27,6 +27,7 @@ type
     function getAttr(name:String):String;
     function file_location_find_by_id(id:String):TFileLocation;
     function getFileLocations(reload: Boolean = false):TObjectList;
+    function getFileLocationNames():string;
 
     function getAccessibleLocation(CDROMDriveLetter,UsbStickLetter:string): String;
     function getAlternateDriveLetter():string;
@@ -36,7 +37,7 @@ type
     function getTags(reload: Boolean = false):TObjectList;
     function setTaglist(s:String):TObjectList;
     function addTagNames(ts:string) : TObjectList;
-    function addTagName(t:string) : TObjectList;
+    function addTagName(tagName:string) : TObjectList;
     function removeTagNames(ts:string) : TObjectList;
     function removeTagName(t:string) : TObjectList;
 
@@ -85,7 +86,7 @@ var
 begin
   if (self.file_locations<>nil) or reload then begin
     if self.file_locations<>nil then self.file_locations.free;
-    tbl:=sldb.GetTable('SELECT * FROM file_locations WHERE fileinfo_id="'+inttostr(self.id)+'"');
+    tbl:=sldb.GetTable('SELECT * FROM file_locations WHERE fileinfo_id='+inttostr(self.id));
     file_locations:=TObjectList.create();
     while not tbl.EOF do begin
       file_locations.Add(TFileLocation.Create(sldb, tbl.getRow));
@@ -143,7 +144,7 @@ begin
     result:=self.taggings
   else begin
     if self.taggings<>nil then self.taggings.Free;
-    tbl:=sldb.GetTable('SELECT * FROM taggings WHERE taggable_type="'+self.taggable_type+'" AND taggable_id="'+inttostr(self.id)+'"');
+    tbl:=sldb.GetTable('SELECT * FROM taggings WHERE taggable_type="'+self.taggable_type+'" AND taggable_id='+inttostr(self.id));
     taggings:=TObjectList.create();
     while not tbl.EOF do begin
       taggings.Add(TTagging.Create(sldb, tbl.getRow));
@@ -164,7 +165,8 @@ begin
     tbl := sldb.GetTable('SELECT tags.* FROM '
                         +' taggings LEFT JOIN tags ON taggings.tag_id=tags.id '
                         +' WHERE taggings.taggable_type="'+UTF8Encode(TFileinfo.taggable_type)+'" '
-                        +'   AND taggings.taggable_id="'+inttostr(self.id)+'"');
+                        +'   AND taggings.taggable_id='+inttostr(self.id)
+                        +' ORDER BY tags.name ASC');
     tags:=TObjectList.create();
     while not tbl.EOF do begin
       tags.Add(TTag.Create(sldb, tbl.getRow));
@@ -181,39 +183,40 @@ end;
 // by Name
 function TFileinfo.addTagNames(ts:string) : TObjectList;
 var
-  l: TObjectList;
   pcs: TStringList;
-  i,j: integer;
-  t: TTag;
-  tgg: TTagging;
-  found: Boolean;
+  i: integer;
 begin
   try
-    l:=getTags;
     pcs:=Split(ts,',');
-    for i:=0 to pcs.Count-1 do begin
-      t:=TTag.db_find_or_create(sldb,pcs[i]);
-      found:=false;
-      for j:=0 to l.count-1 do begin
-        if TTag(l.Items[j]).id=t.id then begin
-          found:=true;
-          break;
-        end;
-      end;
-      if not found then begin
-        tgg:=TTagging.db_create(sldb,TFileinfo.taggable_type,self.id,t.id);
-        tgg.free;
-      end;
-      t.Free;
-    end;
-    result:=getTags(true);
+    for i:=0 to pcs.Count-1 do result:=addTagName(pcs[i]);
   finally
     pcs.Free;
   end;
 end;
 
-function TFileinfo.addTagName(t:string) : TObjectList;
+function TFileinfo.addTagName(tagName:string) : TObjectList;
+var
+  i: integer;
+  t: TTag;
+  found: Boolean;
+  l: TObjectList;
+  tgg: TTagging;
 begin
+  l:=getTags;
+  t:=TTag.db_find_or_create(sldb,tagName);
+  found:=false;
+  for i:=0 to l.count-1 do begin
+    if TTag(l.Items[i]).id=t.id then begin
+      found:=true;
+      break;
+    end;
+  end;
+  if not found then begin
+    tgg:=TTagging.db_create(sldb,TFileinfo.taggable_type,self.id,t.id);
+    tgg.free;
+  end;
+  t.Free;
+  result:=getTags(true);
 end;
 
 function TFileinfo.removeTagNames(ts:string) : TObjectList;
@@ -267,6 +270,16 @@ begin
 end;
 
 
+function TFileinfo.getFileLocationNames():string;
+var
+  i: Integer;
+begin
+  result:='';
+  for i:=0 to self.getFileLocations().count-1 do
+    result:=result+TFileLocation(self.file_locations[i]).location_and_full_path+#13#10;
+end;
+
+
 // =============================================================================
 //                             Klassen-Methoden
 // =============================================================================
@@ -295,7 +308,7 @@ begin
         query:='SELECT fileinfos.*,file_locations.id AS FILE_LOCATION_ID'+
                ' FROM fileinfos'+
                ' LEFT JOIN file_locations ON fileinfos.id=file_locations.fileinfo_id '+
-               ' WHERE fileinfos.id='+s1+' AND FILE_LOCATION_ID!=""';
+               ' WHERE fileinfos.id='+s1+' AND FILE_LOCATION_ID IS NOT NULL';
          tbl := slDb.GetTable(query);
          while not tbl.eof do begin
            idx:=tbl.FieldIndex['FILE_LOCATION_ID'];
@@ -317,7 +330,7 @@ class function TFileinfo.db_find(db:TSQLiteDatabase; id:integer): TFileinfo;
 var
   tbl: TSQLiteTable;
 begin
-  tbl:=db.GetTable('SELECT * FROM fileinfos WHERE id="'+inttostr(id)+'"');
+  tbl:=db.GetTable('SELECT * FROM fileinfos WHERE id='+inttostr(id));
   if tbl.Count>0 then begin
     result:=TFileinfo.create(db,tbl.getRow,true);
   end
@@ -330,7 +343,7 @@ class function TFileinfo.db_create(db: TSQLiteDatabase; sha2:string; fsize:integ
 var
   id: Int64;
 begin
-  db.ExecSQL('INSERT INTO fileinfos (sha2,filesize) VALUES ("'+sha2+'","'+inttostr(fsize)+'")');
+  db.ExecSQL('INSERT INTO fileinfos (sha2,filesize) VALUES ("'+sha2+'",'+inttostr(fsize)+')');
   id:=db.GetLastInsertRowID;
   result:=TFileinfo.db_find(db,id);
 end;
@@ -339,7 +352,7 @@ class function TFileinfo.db_find_or_create_by_sha2_and_filesize(db: TSQLiteDatab
 var
   tbl: TSQLiteTable;
 begin
-  tbl:=db.GetTable('SELECT * FROM fileinfos WHERE sha2="'+sha2+'" AND filesize="'+inttostr(fsize)+'"');
+  tbl:=db.GetTable('SELECT * FROM fileinfos WHERE sha2="'+sha2+'" AND filesize='+inttostr(fsize));
   if tbl.Count>0 then begin
     result:=TFileinfo.create(db,tbl.getRow,true);
   end

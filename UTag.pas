@@ -36,7 +36,7 @@ begin
   end
   else begin
     id:=strtoint(s);
-    name:=UTF8Decode(fields.GetString('NAME'));
+    name:=UTF8ToString(AnsiString(fields.GetString('NAME')));
   end;
 end;
 
@@ -44,7 +44,7 @@ class function TTag.db_find_or_create(db: TSQLiteDatabase;name:String): TTag;
 var
   tbl: TSQLiteTable;
 begin
-  tbl:=db.GetTable('SELECT * FROM tags WHERE name="'+UTF8Encode(name)+'"');
+  tbl:=db.GetTable(AnsiString(UTF8Encode('SELECT * FROM tags WHERE name="'+name+'"')));
   if tbl.Count>0 then begin
     result:=TTag.create(db,tbl.getRow);
   end
@@ -57,7 +57,7 @@ class function TTag.db_create(db: TSQLiteDatabase; name:string):TTag;
 var
   id: Int64;
 begin
-  db.ExecSQL('INSERT INTO tags (name) VALUES ("'+UTF8Encode(name)+'")');
+  db.ExecSQL(AnsiString(UTF8Encode('INSERT INTO tags (name) VALUES ("'+name+'")')));
   id:=db.GetLastInsertRowID;
   result:=TTag.db_find(db,id);
 end;
@@ -66,18 +66,19 @@ class function TTag.db_find(db: TSQLiteDatabase;id:Integer): TTag;
 var
   tbl: TSQLiteTable;
 begin
-  tbl:=db.GetTable('SELECT * FROM tags WHERE id="'+inttostr(id)+'"');
+  tbl:=db.GetTable(AnsiString(UTF8Encode('SELECT * FROM tags WHERE id='+inttostr(id))));
   if tbl.Count>0 then begin
     result:=TTag.create(db,tbl.getRow);
   end
   else begin
     alert('Tag '+inttostr(id)+' nicht gefunden!');
+    result:=nil;
   end;
 end;
 
 class procedure TTag.db_delete(db:TSQLiteDatabase;id:Integer);
 begin
-  db.ExecSQL('DELETE FROM tags WHERE id="'+inttostr(id)+'"');
+  db.ExecSQL(AnsiString(UTF8Encode('DELETE FROM tags WHERE id='+inttostr(id))));
 end;
 
 end.

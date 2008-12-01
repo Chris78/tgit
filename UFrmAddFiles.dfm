@@ -1,9 +1,9 @@
 object FrmAddFiles: TFrmAddFiles
   Left = 434
   Top = 239
-  Width = 800
-  Height = 568
   Caption = 'Dateien zu tgit hinzuf'#252'gen'
+  ClientHeight = 541
+  ClientWidth = 792
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -64,14 +64,14 @@ object FrmAddFiles: TFrmAddFiles
       ShowRoot = False
       TabOrder = 0
       OnChange = ShellTreeView1Change
-    end
+    end    
     object cmbLocation: TComboBox
       Left = 1
       Top = 1
       Width = 270
       Height = 21
-      ItemHeight = 13
-      TabOrder = 1
+      ItemHeight = 0
+      TabOrder = 0
       Text = 'cmbLocation'
     end
     object chkSubfolders: TCheckBox
@@ -80,7 +80,7 @@ object FrmAddFiles: TFrmAddFiles
       Width = 258
       Height = 17
       Caption = 'Unterverzeichnisse einschlie'#223'en?'
-      TabOrder = 2
+      TabOrder = 1
     end
     object edtInitialTags: TEdit
       Left = 5
@@ -89,7 +89,7 @@ object FrmAddFiles: TFrmAddFiles
       Height = 21
       Anchors = [akLeft, akRight, akBottom]
       AutoSelect = False
-      TabOrder = 3
+      TabOrder = 2
     end
     object BtnAddFiles: TButton
       Left = 650
@@ -108,7 +108,7 @@ object FrmAddFiles: TFrmAddFiles
       Height = 25
       Anchors = [akBottom]
       Caption = 'schlie'#223'en'
-      TabOrder = 5
+      TabOrder = 3
       OnClick = btnCloseClick
     end
   end

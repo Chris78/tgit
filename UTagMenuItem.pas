@@ -2,22 +2,24 @@ unit UTagMenuItem;
 
 interface
 
-uses Classes, Menus, Forms, UTag;
+uses
+  Classes, Menus, Forms,
+  UTag, UTagging;
 
 type
   TTagMenuItem = class(TMenuItem)
-    tag: TTag;
+    tagging: TTagging;
   private
   public
-    constructor create(aOwner:TComponent; aTag: TObject);
+    constructor create(aOwner:TComponent; aTagging: TObject);
   end;
 
 implementation
 
-constructor TTagMenuItem.create(aOwner:TComponent; aTag: TObject);
+constructor TTagMenuItem.create(aOwner:TComponent; aTagging: TObject);
 begin
-  tag:=TTag(aTag);
-  caption:=tag.name;
+  tagging:=TTagging(aTagging);
+  caption:=tagging.getTag().name;
   inherited create(aOwner);
 end;
 
