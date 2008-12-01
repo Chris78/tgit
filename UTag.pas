@@ -18,7 +18,8 @@ type
     class function db_find(db: TSQLiteDatabase; id:Integer): TTag;
     class function db_find_or_create(db: TSQLiteDatabase; name:String): TTag;
     class function db_create(db: TSQLiteDatabase; name:string):TTag;
-    class procedure db_delete(db:TSQLiteDatabase;id:Integer);    
+    class procedure db_delete(db:TSQLiteDatabase;id:Integer);
+    class procedure db_delete_by_name(db:TSQLiteDatabase;tagName:String);
   end;
 
 implementation
@@ -80,6 +81,12 @@ class procedure TTag.db_delete(db:TSQLiteDatabase;id:Integer);
 begin
   db.ExecSQL(AnsiString(UTF8Encode('DELETE FROM tags WHERE id='+inttostr(id))));
 end;
+
+class procedure TTag.db_delete_by_name(db:TSQLiteDatabase;tagName:String);
+begin
+  db.ExecSQL(AnsiString(UTF8Encode('DELETE FROM tags WHERE name="'+tagName+'"')));
+end;
+
 
 end.
 

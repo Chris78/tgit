@@ -300,6 +300,7 @@ var
   tbl: TSQLiteTable;
   h,r: THash;
   f: TFileinfo;
+  ppp: Integer; // "Pics Per Page"
 begin
   curFileinfos.Clear;
   query:='SELECT temp.*,file_locations.id AS FILE_LOCATION_ID FROM '+
@@ -318,6 +319,7 @@ begin
   tbl := slDb.GetTable(AnsiString(UTF8Encode(query)));
   h:=THash.create;
 
+  ppp:=pageNo*picsPerCol*PicsPerCol;
   while not tbl.eof do begin
     r:=tbl.GetRow;
     f:=TFileinfo.create(sldb,r,true);
@@ -325,8 +327,13 @@ begin
     if h.GetString(inttostr(f.id))<>'1' then begin
         h.SetString(inttostr(f.id),'1');
         curFileinfos.add(f);
-        if curFileinfos.Count=pageNo*picsPerCol*PicsPerCol then
+        if curFileinfos.Count=ppp then
           updatePreviews();
+        if (curFileinfos.Count mod ppp)=0 then begin
+          if (not ButtonNext.Enabled) and (curFileinfos.Count>ppp) then
+            ButtonNext.Enabled:=true;
+          lblPageXOfY.caption:='Seite '+inttostr(pageNo)+' / '+inttostr(pageCount());
+        end;
     end;
     tbl.Next;
     application.ProcessMessages;

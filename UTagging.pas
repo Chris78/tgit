@@ -133,7 +133,7 @@ begin
  try
    db.ExecSQL(AnsiString(UTF8Encode('DELETE FROM taggings WHERE taggable_type="'+taggable_type+'" AND taggable_id='+inttostr(taggable_id)+' AND tag_id='+inttostr(tag_id))));
    tggs:=db_find_by_tag_id(db,tag_id);
-   if tggs.count>0 then TTag.db_delete(db,tag_id);
+   if tggs.count=0 then TTag.db_delete(db,tag_id);
  finally
    tggs.Free;
  end;

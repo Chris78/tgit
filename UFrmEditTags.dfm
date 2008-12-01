@@ -13,6 +13,9 @@ object frmEditTags: TfrmEditTags
   OldCreateOrder = False
   OnClose = FormClose
   OnShow = FormShow
+  DesignSize = (
+    635
+    426)
   PixelsPerInch = 96
   TextHeight = 13
   object imgPreview: TImage
@@ -27,6 +30,7 @@ object frmEditTags: TfrmEditTags
     Top = 399
     Width = 121
     Height = 23
+    Anchors = [akRight, akBottom]
     Caption = 'Schlagworte speichern'
     TabOrder = 0
     OnClick = btnSaveTagsClick
@@ -36,6 +40,7 @@ object frmEditTags: TfrmEditTags
     Top = 37
     Width = 361
     Height = 353
+    Anchors = [akLeft, akTop, akRight, akBottom]
     TabOrder = 1
   end
   object edtEditTags: TEdit

@@ -49,6 +49,7 @@ uses
 procedure TfrmEditTags.btnAddTagClick(Sender: TObject);
 begin
   renderTag(edtEditTags.text);
+  edtEditTags.text:='';
   arrangeTags;
 end;
 
@@ -59,7 +60,10 @@ var
 begin
   for i:=0 to pnlCurTags.ComponentCount-1 do begin
     lbl:=TLabel(pnlCurTags.Components[i]);
-    if lbl.Tag=1 then fileinfo.addTagName(lbl.caption);
+    if lbl.Tag=1 then
+      fileinfo.addTagName(lbl.caption)
+    else
+      fileinfo.removeTagName(lbl.caption);
   end;
   close;
 end;
@@ -135,9 +139,13 @@ var
   t: TTag;
 begin
   if Key=Char(VK_RETURN) then begin
-    renderTag(edtEditTags.text);
-    arrangeTags;
-    edtEditTags.Text:='';
+    if edtEditTags.text='' then
+      btnSaveTagsClick(Sender)
+    else begin
+      renderTag(edtEditTags.text);
+      arrangeTags;
+      edtEditTags.Text:='';
+    end;
   end;
 end;
 

@@ -39,7 +39,7 @@ type
     function addTagNames(ts:string) : TObjectList;
     function addTagName(tagName:string) : TObjectList;
     function removeTagNames(ts:string) : TObjectList;
-    function removeTagName(t:string) : TObjectList;
+    function removeTagName(tagName:string) : TObjectList;
 
     function addTagIDs(tag_ids:string) : TObjectList;
     function addTagID(tag_id:integer) : TObjectList;
@@ -223,8 +223,21 @@ function TFileinfo.removeTagNames(ts:string) : TObjectList;
 begin
 end;
 
-function TFileinfo.removeTagName(t:string) : TObjectList;
+function TFileinfo.removeTagName(tagName:string) : TObjectList;
+var
+  i: Integer;
+  l : TObjectList;
+  t: TTag;
 begin
+  l:=getTags;
+  for i:=0 to l.Count-1 do begin
+    t:=TTag(l[i]);
+    if lowercase(t.name)=lowercase(tagName) then begin
+      removeTagID(t.id);
+      break;
+    end;
+  end;
+  result:=getTags(true);
 end;
 
 // by ID
