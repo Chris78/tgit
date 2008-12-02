@@ -169,10 +169,8 @@ type
     importingThumbs,busyReloading: Boolean;
     slDBPath, thumbDBPath: String;
     sltb: TSQLiteTable;
-    ItemsForSelectedTags: TObjectList;
     lastLabel: TLabel;
     maxTagCount: Integer;
-    curFileinfos: TObjectList;
     clickedTagName: String;
     clickedTagWasActive: Boolean;
     picsPerCol: Integer;
@@ -192,7 +190,6 @@ type
     function  GetTagCloud(limit:Integer; filter:String = ''): TSQLIteTable;
     procedure showTagcloud(tags:TSQLiteTable);
     procedure renderTag(tag_item,tag_count:String;i:Integer);
-    procedure ReloadTagCloud(limit:Integer = -1; filter: String = '');
     procedure arrangeTagCloud;
     procedure selectTag(tag:String);
     procedure unselectTag(tag:String);
@@ -203,7 +200,6 @@ type
     procedure clearPreviews;
     function  GetItemsFor(tags: TStringList; match_all:Boolean): TObjectList;
     function  renderPreview(fi:TFileinfo;index:Integer):Boolean;
-    procedure updatePreviews;
     procedure arrangePreviews();
     procedure previewClick(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
 
@@ -219,12 +215,15 @@ type
     { Public declarations }
     sldb, thumbsdb: TSQLiteDatabase;
     selectedTags: TStringlist;
+    curFileinfos: TObjectList;
+    clickedPreview: TImage;
     locations : TLocations;
     getCDROM : TFunctionPtr;
     selectedCDROMDrive: String;
     selectedUSBDrive: String;
-    clickedPreview: TImage;
     procedure updateDocuments(limit: Integer = -1; offset:Integer = -1);
+    procedure updatePreviews;
+    procedure reloadTagCloud(limit:Integer = -1; filter: String = '');
     function GetSha2(filename:String): String;
     function GetFilesize(path_file:string): Integer;
     function Sha2(s:String): String;
@@ -493,7 +492,7 @@ begin
     TagCloud.Controls[0].free;
 end;
 
-procedure TFrmMain.ReloadTagCloud(limit:Integer = -1; filter: String = '');
+procedure TFrmMain.reloadTagCloud(limit:Integer = -1; filter: String = '');
 begin
   busyReloading:=true;
   application.ProcessMessages;
@@ -517,8 +516,8 @@ begin
   joinCondition:='';
   having:='';
   filterCondition:=' WHERE tags.name LIKE "%'+filter+'%" ';
-  if (ItemsForSelectedTags<>nil) and (ItemsForSelectedTags.count>0) then begin
-    taggable_ids:=getCommaListOf('id',itemsForSelectedTags,'');
+  if (curFileinfos<>nil) and (curFileinfos.count>0) then begin
+    taggable_ids:=getCommaListOf('id',curFileinfos,'');
 //    alert('taggable_ids = '+taggable_ids);
     if taggable_ids<>'' then
       joinCondition:=' AND taggable_type="Fileinfo" AND taggings.taggable_id IN ('+taggable_ids+') '
@@ -659,8 +658,8 @@ end;
 
 procedure TFrmMain.updateDocuments(limit: Integer = -1; offset:Integer = -1);
 begin
-  ItemsForSelectedTags:=GetItemsFor(selectedTags,chkMatchAll.checked);
-  showFileinfos(ItemsForSelectedTags);
+  GetItemsFor(selectedTags,chkMatchAll.checked);
+  showFileinfos(curFileinfos);
 end;
 
 procedure TFrmMain.arrangeTagCloud();
@@ -1297,7 +1296,7 @@ begin
   subm:=TPopupMenu(Sender).items[1];
   if subm.count>0 then subm.Clear;
   for i:=0 to taggings.Count-1 do begin
-    mi:=TTagMenuItem.create(subm,taggings[i]);
+    mi:=TTagMenuItem.create(subm,taggings[i],TPreview(clickedPreview));
     with mi do begin
       GroupIndex:=1;
       OnClick:=doRemoveTagging;
@@ -1307,9 +1306,19 @@ begin
 end;
 
 procedure TFrmMain.doRemoveTagging(Sender:TObject);
+var
+  i: Integer;
+  s: String;
+  m: TTagMenuItem;
 begin
-  TTagMenuItem(Sender).tagging.tgg_destroy;
-  updateDocuments;
+  m:=TTagMenuItem(Sender);
+  s:=m.tagging.tag.name;
+  m.tagging.tgg_destroy;
+  // Preview entfernen, falls sie nun nicht mehr den gewählten Tags entspricht:
+  if selectedTags.Find(s,i) then begin
+    curFileinfos.remove(m.preview.fileinfo);
+    updatePreviews;
+  end;
 end;
 
 procedure TFrmMain.FormDestroy(Sender: TObject);

@@ -110,7 +110,7 @@ end;
 procedure TFrmAddFiles.AddPathToTgit(location: TLocation; path: String; includeSubfolders:Boolean;initialTags:String);
 var
   strl: TStringList;
-  fname,p: string;
+  fname: string;
   r: TSearchRec;
   eod: Integer; // end of directory
 begin
@@ -139,19 +139,7 @@ begin
           end;
           eod:=FindNext(r);
         end;
-//      d=Dir.open(path)
-//      while d2=d.read
-//        next if d2=='.' || d2=='..'
-//        if File.directory?(File.join(d.path,d2))
-//          Fileinfo.add_path(location,File.join(d.path,d2),opts) if opts[:include_subdirs]
-//        else
-//          if File.file?(File.join(d.path,d2))
-//            Fileinfo.add_file(location,d.path,d2,opts)
-//          end
-//        end
-//      end
-//      return true
-        end;
+      end;
     end;
   finally
     findclose(r);
@@ -161,12 +149,10 @@ end;
 procedure TFrmAddFiles.AddFileToTgit(location: TLocation; path,fname: String; initialTags:String);
 var
   path_file,sha2: string;
-  f: File of Byte;
   fsize: Integer;
   fi: TFileinfo;
   fl: TFileLocation;
 begin
-  try
     path_file:=path+'\'+fname;
     sha2:=TFrmMain(mainform).GetSha2(path_file);
     fsize:=TFrmMain(mainform).GetFilesize(path_file);
@@ -175,13 +161,13 @@ begin
     fi.addTagNames(initialTags);
     // und die File_Location anlegen, damit man auch weiﬂ, wo die Datei lag:
     fl:=TFileLocation.db_find_or_create_by_fileinfo_id_and_location_id_and_path_and_filename(sldb,fi.id, location.id, path, fname);
+  try
     // Thumbnail erzeugen:
     doLoadImage(path+'\'+fname,imgPreview,0,fi,sldb,thumbsdb,true);
   finally
     fi.free;
     fl.free;
     application.ProcessMessages;
-//    close;
   end;
 end;
 

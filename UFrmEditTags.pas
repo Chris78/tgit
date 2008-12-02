@@ -55,16 +55,30 @@ end;
 
 procedure TfrmEditTags.btnSaveTagsClick(Sender: TObject);
 var
-  i: Integer;
+  i,dummy: Integer;
   lbl: TLabel;
+  previewRemoved,newTagsAdded: Boolean;
+  m: TFrmMain;
 begin
+  m:=TFrmMain(mainForm);
+  previewRemoved:=false;
   for i:=0 to pnlCurTags.ComponentCount-1 do begin
     lbl:=TLabel(pnlCurTags.Components[i]);
-    if lbl.Tag=1 then
-      fileinfo.addTagName(lbl.caption)
-    else
+    if lbl.Tag=1 then begin // Tag ist blau, also war er schon da oder kam neu hinzu
+      fileinfo.addTagName(lbl.caption);
+      newTagsAdded:=true;
+    end
+    else begin              // Tag ist rot, soll also gelöscht werden
       fileinfo.removeTagName(lbl.caption);
+      // Preview entfernen, falls sie nun nicht mehr den gewählten Tags entspricht:
+      if not previewRemoved and TFrmMain(mainForm).selectedTags.Find(lbl.caption,dummy) then begin
+        m.curFileinfos.remove(fileinfo);
+        m.updatePreviews;
+        previewRemoved:=true;
+      end;
+    end;
   end;
+  if newTagsAdded then m.reloadTagCloud;
   close;
 end;
 
@@ -135,8 +149,6 @@ begin
 end;
 
 procedure TfrmEditTags.edtEditTagsKeyPress(Sender: TObject; var Key: Char);
-var
-  t: TTag;
 begin
   if Key=Char(VK_RETURN) then begin
     if edtEditTags.text='' then
