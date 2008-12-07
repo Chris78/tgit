@@ -2,7 +2,9 @@ unit UTag;
 
 interface
 
-uses Classes, Hashes,sysutils,Contnrs, SQLiteTable3, UHelper; // , UFileLocation, Dialogs, Forms;
+uses
+  Classes, Hashes,sysutils,Contnrs, SQLiteTable3, StringItWell,
+  UHelper; // , UFileLocation, Dialogs, Forms;
 
 type
 
@@ -20,6 +22,7 @@ type
     class function db_create(db: TSQLiteDatabase; name:string):TTag;
     class procedure db_delete(db:TSQLiteDatabase;id:Integer);
     class procedure db_delete_by_name(db:TSQLiteDatabase;tagName:String);
+    class function getRelatedFileinfoIds(db:TSQLiteDatabase; tags: TStringList; match_all:Boolean): String;
   end;
 
 implementation
@@ -85,6 +88,26 @@ end;
 class procedure TTag.db_delete_by_name(db:TSQLiteDatabase;tagName:String);
 begin
   db.ExecSQL(AnsiString(UTF8Encode('DELETE FROM tags WHERE name="'+tagName+'"')));
+end;
+
+class function TTag.getRelatedFileinfoIds(db:TSQLiteDatabase; tags: TStringList; match_all:Boolean): String;
+var
+  query: string;
+  tbl: TSQLiteTable;
+begin
+  query:='SELECT group_concat(temp.TGGIDS) AS TAGGABLE_IDS FROM '+
+         '  (SELECT g.taggable_id AS TGGIDS '+
+         '    FROM tags t '+
+         '    LEFT JOIN taggings g ON g.tag_id=t.id '+
+         '    WHERE g.taggable_type="Fileinfo" AND t.name IN ("'+AssembleItWell(tags,'","')+'") '+
+         '    GROUP BY g.taggable_type,g.taggable_id';
+  if match_all then begin
+    query := query+'   HAVING count(distinct t.id)='+inttostr(tags.count);
+  end;
+  query:=query+' ) AS temp ';
+  tbl := db.GetTable(AnsiString(UTF8Encode(query)));
+  result:=tbl.FieldAsString(tbl.FieldIndex['TAGGABLE_IDS']);
+  tbl.Free;
 end;
 
 

@@ -7,14 +7,14 @@ uses
   Dialogs, StdCtrls, SQLiteTable3, ComCtrls, Grids, StringItWell,
   DCPcrypt2, DCPsha256, Math, TabNotBk, ExtCtrls, Menus, Hashes, Contnrs,
   ExtDlgs, FreeBitmap, DBTables,
-  UFrmAddFiles, UFrmEditTags,
+  UFrmAddFiles, UFrmEditTags, UFrmEditLocations,
   UFileinfo, UFileLocation, ULocation, UTag, UTagging,
   UTagMenuItem,
   UHelper,
   //GraphicEx,
   jpeg, UJPGStreamFix, 
   //,AVCodec
-  ShellAPI, UPreview, MPlayer, ShellCtrls, IdGlobal;
+  ShellAPI, UPreview, MPlayer, ShellCtrls, IdGlobal, Buttons;
 
 const
   rowPadding=2;
@@ -57,7 +57,6 @@ type
     Hilfe1: TMenuItem;
     Datenbankwhlen1: TMenuItem;
     Locations1: TMenuItem;
-    hinzufgen1: TMenuItem;
     bearbeiten1: TMenuItem;
     hinzufgen2: TMenuItem;
     agSuche1: TMenuItem;
@@ -114,6 +113,8 @@ type
     zurErstenSeite: TMenuItem;
     zurletztenSeite: TMenuItem;
     Image1: TImage;
+    btnAbort: TSpeedButton;
+    hmmja1: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormResize(Sender: TObject);
@@ -164,6 +165,9 @@ type
     procedure DateiausderDatenbankentfernen1Click(Sender: TObject);
     procedure zurErstenSeiteClick(Sender: TObject);
     procedure zurletztenSeiteClick(Sender: TObject);
+    procedure btnAbortClick(Sender: TObject);
+    procedure bearbeiten1Click(Sender: TObject);
+    procedure chkMatchAllClick(Sender: TObject);
   private
     { Private declarations }
     importingThumbs,busyReloading: Boolean;
@@ -176,7 +180,8 @@ type
     picsPerCol: Integer;
     pageNo: Integer;
     frmAddFiles: TFrmAddFiles;
-    frmEditTags: TfrmEditTags;
+    frmEditTags: TFrmEditTags;
+    frmEditLocations: TFrmEditLocations;
     procedure openDB(promptUser:Boolean);
     procedure openThumbDB;
     procedure loadSettingsFromIniFile();
@@ -187,7 +192,7 @@ type
 
     // TagCloud
     procedure clearTagcloud;
-    function  GetTagCloud(limit:Integer; filter:String = ''): TSQLIteTable;
+    function  GetTagCloud(limit:Integer; filter:String = ''; taggable_ids: String=''): TSQLIteTable;
     procedure showTagcloud(tags:TSQLiteTable);
     procedure renderTag(tag_item,tag_count:String;i:Integer);
     procedure arrangeTagCloud;
@@ -221,6 +226,7 @@ type
     getCDROM : TFunctionPtr;
     selectedCDROMDrive: String;
     selectedUSBDrive: String;
+    abortFurtherLoading: Boolean;
     procedure updateDocuments(limit: Integer = -1; offset:Integer = -1);
     procedure updatePreviews;
     procedure reloadTagCloud(limit:Integer = -1; filter: String = '');
@@ -252,6 +258,7 @@ begin
   picsPerCol:=3;
   // Settings ggf. überladen mit Einstellungen aus INI-File:
   loadSettingsFromIniFile();
+  MainMenu1.Items[2].Items[0].Items[picsPerCol-1].checked:=true;
   pageNo:=1;
   selectedTags:=TStringlist.create;
   selectedTags.Sorted:=true;
@@ -300,38 +307,56 @@ var
   h,r: THash;
   f: TFileinfo;
   ppp: Integer; // "Pics Per Page"
+  //preload: Integer;
+  previewUpdated: Boolean;
+  relatedTaggableIds: String;
 begin
-  curFileinfos.Clear;
-  query:='SELECT temp.*,file_locations.id AS FILE_LOCATION_ID FROM '+
-         '  (SELECT fileinfos.* FROM tags '+
+  ppp:=picsPerCol*PicsPerCol;
+  previewUpdated:=false;
+  //preload:=10; // preload 5 Pages
+  //curFileinfos.Clear;
+ // query:='SELECT temp.*,file_locations.id AS FILE_LOCATION_ID FROM '+
+ //        '  (SELECT fileinfos.* FROM tags '+
+
+  // Die Taggable-IDs können schnell aufeinmal ermittelt und
+  // die TagCloud damit aktualisiert werden:
+  relatedTaggableIds:=TTag.getRelatedFileinfoIDs(sldb,tags,match_all);
+  clearTagCloud;
+  showTagcloud(GetTagCloud(0,'',relatedTaggableIds));
+  application.ProcessMessages;
+
+  query:='SELECT fileinfos.* FROM tags '+
          '   LEFT JOIN taggings ON taggings.tag_id=tags.id '+
-         '   LEFT JOIN fileinfos on fileinfos.id=taggings.taggable_id AND taggings.taggable_type="Fileinfo" '+
-         '   WHERE tags.name in ("'+AssembleItWell(tags,'","')+'") '+
+         '   LEFT JOIN fileinfos ON fileinfos.id=taggings.taggable_id AND taggings.taggable_type="Fileinfo" '+
+         '   WHERE tags.name IN ("'+AssembleItWell(tags,'","')+'") '+
          '   GROUP BY fileinfos.id ';
   if match_all then begin
-    query := query+' HAVING count(distinct tags.id)='+inttostr(tags.count);
+    query := query+'   HAVING COUNT(distinct tags.id)='+inttostr(tags.count);
   end;
-  query:=query+') AS temp'+
-               ' LEFT JOIN file_locations ON temp.id=file_locations.fileinfo_id ';
-
+  query:=query+'   ORDER BY fileinfos.id '; //+
   edtQuery.text:=query;
   tbl := slDb.GetTable(AnsiString(UTF8Encode(query)));
   h:=THash.create;
-
-  ppp:=pageNo*picsPerCol*PicsPerCol;
+  abortFurtherLoading:=false;
+  btnAbort.show;
   while not tbl.eof do begin
+    if abortFurtherLoading then break;
     r:=tbl.GetRow;
     f:=TFileinfo.create(sldb,r,true);
     r.free;
     if h.GetString(inttostr(f.id))<>'1' then begin
         h.SetString(inttostr(f.id),'1');
         curFileinfos.add(f);
-        if curFileinfos.Count=ppp then
+        if curFileinfos.Count=pageNo*ppp then begin
           updatePreviews();
+          previewUpdated:=true;
+        end;
         if (curFileinfos.Count mod ppp)=0 then begin
           if (not ButtonNext.Enabled) and (curFileinfos.Count>ppp) then
             ButtonNext.Enabled:=true;
           lblPageXOfY.caption:='Seite '+inttostr(pageNo)+' / '+inttostr(pageCount());
+          application.ProcessMessages;
+          sleep(10);  // damit nicht volle 100% CPU-Last gefahren wird
         end;
     end;
     tbl.Next;
@@ -339,8 +364,13 @@ begin
   end;
   h.free;
   result:=curFileinfos;
+  // Jetzt die Previews updaten, falls noch nicht oben geschehen:
+  if not previewUpdated then updatePreviews;
+  // Seite X von Y setzen:
+  lblPageXOfY.caption:='Seite '+inttostr(pageNo)+' / '+inttostr(pageCount());
   ButtonBack.Enabled:=(pageNo>1);
   ButtonNext.Enabled:=(pageNo*PicsPerCol*PicsPerCol<curFileinfos.Count);
+  btnAbort.hide;
 end;
 
 procedure TFrmMain.showFileinfos(fis: TObjectList);
@@ -479,6 +509,11 @@ begin
   end;
 end;
 
+procedure TFrmMain.chkMatchAllClick(Sender: TObject);
+begin
+  UpdateDocuments;
+end;
+
 procedure TFrmMain.clearPreviews;
 begin
   while PanelPreviews.ControlCount>0 do
@@ -504,9 +539,9 @@ begin
 end;
 
 // Zeigt die TagCloud in Abhängigkeit der aktuell gewählten Tags und Dokumente:
-function TFrmMain.GetTagCloud(limit:Integer; filter: String = ''): TSQLiteTable;
+function TFrmMain.GetTagCloud(limit:Integer; filter: String = ''; taggable_ids: String=''): TSQLiteTable;
 var
-  query,taggable_ids,tagnames,joinCondition,filterCondition,having: String;
+  query,tagnames,joinCondition,filterCondition,having: String;
   tmp: TSQLiteTable;
 begin
   if limit=0 then begin
@@ -516,8 +551,8 @@ begin
   joinCondition:='';
   having:='';
   filterCondition:=' WHERE tags.name LIKE "%'+filter+'%" ';
-  if (curFileinfos<>nil) and (curFileinfos.count>0) then begin
-    taggable_ids:=getCommaListOf('id',curFileinfos,'');
+  if (taggable_ids<>'') OR ((curFileinfos<>nil) and (curFileinfos.count>0)) then begin
+    if taggable_ids='' then taggable_ids:=getCommaListOf('id',curFileinfos,'');
 //    alert('taggable_ids = '+taggable_ids);
     if taggable_ids<>'' then
       joinCondition:=' AND taggable_type="Fileinfo" AND taggings.taggable_id IN ('+taggable_ids+') '
@@ -616,6 +651,7 @@ begin
   ButtonBack.enabled:=false;
   clickedTagName:=TLabel(Sender).caption;
   clickedTagWasActive:=(TLabel(Sender).tag=1);
+  abortFurtherLoading:=true;
   Timer1.Enabled:=true;
 end;
 
@@ -658,8 +694,9 @@ end;
 
 procedure TFrmMain.updateDocuments(limit: Integer = -1; offset:Integer = -1);
 begin
+  curFileinfos.Clear;
   GetItemsFor(selectedTags,chkMatchAll.checked);
-  showFileinfos(curFileinfos);
+  //showFileinfos(curFileinfos);   // GetItemsFor wird bereits updatePreviews aufgerufen!
 end;
 
 procedure TFrmMain.arrangeTagCloud();
@@ -728,11 +765,18 @@ end;
 function TFrmMain.GetFilesize(path_file:string): Integer;
 var
   f: File of Byte;
+  ofm: Byte;
 begin
-  assignfile(f,path_file);
-  reset(f);
-  result:=filesize(f);
-  closefile(f);
+  ofm:=FileMode;
+  try
+    FileMode:=fmOpenRead;
+    assignfile(f,path_file);
+    reset(f);
+    result:=filesize(f);
+    closefile(f);
+  finally
+    FileMode:=ofm;
+  end;
 end;
 
 function TFrmMain.GetSha2(filename:String): String;
@@ -851,8 +895,6 @@ begin
   else
     selectTag(clickedTagName);
   updateDocuments();
-  clearTagcloud;
-  showTagCloud(GetTagcloud(0));
   edtTagFilter.text:='';
   Screen.Cursor := crDefault;
 end;
@@ -956,13 +998,19 @@ end;
 procedure TFrmMain.ButtonBackClick(Sender: TObject);
 begin
   dec(pageNo);
-  updatePreviews;
+  if curFileinfos.Count>=PicsPerCol*PicsPerCol*pageNo then
+    updatePreviews
+  else
+    updateDocuments;
 end;
 
 procedure TFrmMain.ButtonNextClick(Sender: TObject);
 begin
   inc(pageNo);
-  updatePreviews;
+  if curFileinfos.Count>=PicsPerCol*PicsPerCol*pageNo then
+    updatePreviews
+  else
+    updateDocuments;
 end;
 
 procedure TFrmMain.zurErstenSeiteClick(Sender: TObject);
@@ -1024,6 +1072,20 @@ end;
 procedure TFrmMain.N1801Click(Sender: TObject);
 begin
   clickedPreview.Tag:=((180+clickedPreview.tag) mod 360);
+end;
+
+procedure TFrmMain.bearbeiten1Click(Sender: TObject);
+begin
+  if frmEditLocations=nil then frmEditLocations:=TFrmEditLocations.Create(self);
+  with frmEditLocations do begin
+    ShowModal;
+  end;
+end;
+
+procedure TFrmMain.btnAbortClick(Sender: TObject);
+begin
+  abortFurtherLoading:=true;
+  btnAbort.Hide;
 end;
 
 procedure TFrmMain.btnCreateAllThumbsClick(Sender: TObject);
@@ -1262,6 +1324,7 @@ begin
   end;
 end;
 
+// neue Dateien zu tgit hinzufügen:
 procedure TFrmMain.hinzufgen2Click(Sender: TObject);
 begin
   if frmAddFiles=nil then frmAddFiles:=TFrmAddFiles.Create(self);

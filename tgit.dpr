@@ -15,12 +15,15 @@ uses
   UTagging in 'UTagging.pas',
   UFrmEditTags in 'UFrmEditTags.pas' {frmEditTags},
   UTagMenuItem in 'UTagMenuItem.pas',
-  AVCodec in 'AVCodec.pas';
+  AVCodec in 'AVCodec.pas',
+  UFrmEditLocations in 'UFrmEditLocations.pas' {frmEditLocations},
+  ULocationType in 'ULocationType.pas';
 
 {$R *.res}
 
 begin
   Application.Initialize;
   Application.CreateForm(TFrmMain, FrmMain);
+  //Application.CreateForm(TfrmEditLocations, frmEditLocations);
   Application.Run;
 end.

@@ -64,6 +64,10 @@
 			</DCCReference>
 			<DCCReference Include="UTagMenuItem.pas"/>
 			<DCCReference Include="AVCodec.pas"/>
+			<DCCReference Include="UFrmEditLocations.pas">
+				<Form>frmEditLocations</Form>
+			</DCCReference>
+			<DCCReference Include="ULocationType.pas"/>
 			<BuildConfiguration Include="Basis">
 				<Key>Base</Key>
 			</BuildConfiguration>
